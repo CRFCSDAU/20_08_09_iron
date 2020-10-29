@@ -353,15 +353,12 @@ Using a binomial GLM with a log link function, the estimated effect (relative ri
 
 ```{r}
 
-  data <- mutate(data, log_obs_time = log(obs_time))
-
   m2_prim_a <- glm.nb(BT_30d_num ~ group, data = data) 
-  m2_prim_b <- glm.nb(BT_30d_num ~ group + offset(log(obs_time)), data = data) 
-  m2_prim_b <- glm.nb(BT_30d_num ~ group + offset(log_obs_time), data = data) 
+  m2_prim_b <- glm.nb(BT_30d_num ~ group + offset(log(obs_time_1)), data = data) 
 
 ```
 
-Using a negative-binomial GLM with a log link function, the estimated effect (incidence rate ratio) on the second primary outcome was `r  pull_ci(m2_prim_b)`. This does not exactly match what was reported in the paper. However, while I have tried to adjust for time under observation, which is what was described in the paper, it is not clear how that was calculated exactly in the original analysis and the apparent variable "offset_30d" is not in my dataset.
+Using a negative-binomial GLM with a log link function, the estimated effect (incidence rate ratio) on the second primary outcome was `r  pull_ci(m2_prim_b)`. This matches what was reported in the paper. 
 
 
 # Table 3 (Original subgroups)
@@ -496,7 +493,7 @@ This matches the paper exactly.
     if(length(levels(data[[var]])) == 2){
     
     # Model based estimate in subgroup 1
-    form_1 <- as.formula(paste0(out, " ~ ", "group"))
+    form_1 <- as.formula(paste0(out, " ~ ", "group + offset(log(obs_time_1))"))
     dta <- data[data[[var]] == levels(data[[var]])[1], ]
     m1 <- glm.nb(form_1, data = dta)
     
@@ -506,7 +503,8 @@ This matches the paper exactly.
     
     # LRT p-value for the interaction test
     form_2 <- as.formula(
-      paste0(out, " ~ ", "group + ", var, " + ", "group * ", var)
+      paste0(out, " ~ ", "group + ", var, " + ", "group * ", var, 
+             " + offset(log(obs_time_1))")
       )
     m3 <- glm.nb(form_2, data = data)
     pv <- drop1(m3, test = "LRT")[paste0("group:", var), "Pr(>Chi)"]
@@ -525,7 +523,7 @@ This matches the paper exactly.
     if(length(levels(data[[var]])) == 3){
     
     # Model based estimate in subgroup 1
-    form_1 <- as.formula(paste0(out, " ~ ", "group"))
+    form_1 <- as.formula(paste0(out, " ~ ", "group + offset(log(obs_time_1))"))
     dta <- data[data[[var]] == levels(data[[var]])[1], ]
     m1 <- glm.nb(form_1, data = dta)
     
@@ -539,7 +537,8 @@ This matches the paper exactly.
     
     # LRT p-value for the interaction test
     form_2 <- as.formula(
-      paste0(out, " ~ ", "group + ", var, " + ", "group * ", var)
+      paste0(out, " ~ ", "group + ", var, " + ", "group * ", var, 
+             " + offset(log(obs_time_1))")
       )
     m4 <- glm.nb(form_2, data = data)
     pv <- drop1(m4, test = "LRT")[paste0("group:", var), "Pr(>Chi)"]
@@ -580,7 +579,7 @@ This matches the paper exactly.
 
 ```
 
-Means and SDs all match exactly, but the models, just like for the main models, do not match exactly. 
+This all matches. 
 
 
 # Additional subgroup analyses
@@ -615,6 +614,7 @@ These match almost exactly. The only difference is for the low tsat OR low ferri
 
 ```
 
+This all matches, except as noted in the previous table, for the same reason. 
 
 ```{r}
 

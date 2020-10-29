@@ -71,6 +71,24 @@
     function(x) as.POSIXct(as.character(x))
   )
 
+  data$combined_surg_dt <- NA
+  data$combined_surg_dt[data$surgyn == "Yes"] <-
+    data$surg_dt[data$surgyn == "Yes"]
+  data$combined_surg_dt[data$surgyn == "No"] <-
+    data$surg_plan_dt[data$surgyn == "No"]
+
+  ggplot(data, aes(surg_dt, surg_plan_dt)) +
+    geom_point() +
+    facet_wrap(~surgyn)
+
+  # ggplot(data, aes(combined_surg_dt, surg_plan_dt)) +
+  #   geom_point() +
+  #   facet_wrap(~surgyn)
+  #
+  # filter(data, surgyn == "No") %>%
+  #   select(surg_plan_dt, surg_dt) %>%
+  #   View()
+
   data$tx_surg_time <- difftime(data$surg_dt, data$trt_dt, unit = "days") %>%
     as.numeric()
 
@@ -91,6 +109,12 @@
   data$death_surg_time <- difftime(data$death_dt, data$surg_dt, unit = "days") %>%
     as.numeric()
 
+  # Create an observation time variable (used to adjust models as explained in
+  # trial paper - not sure this is correct yet)                           QUERY
+  data$obs_time_1 <- NA
+  data$obs_time_1[data$death_surg_time <= 30 & !is.na(data$death_surg_time)] <-
+    data$death_rand_time[data$death_surg_time <= 30 & !is.na(data$death_surg_time)]
+  data$obs_time_1[is.na(data$obs_time_1)] <- data$rand_surg_time[is.na(data$obs_time_1)] + 30
 
 # Flag withdraws or LtF
 
@@ -136,10 +160,6 @@
   data$group <- factor(data$group, levels = c("Placebo", "Active"))
 
 
-# Create an observation time variable (used to adjust models as explained in
-# trial paper - not sure this is correct yet)                              QUERY
-  data$obs_time <- data$death_surg_time
-  data$obs_time[is.na(data$obs_time) | data$obs_time > 30] <- 30
 
 # Primary based on time from surg, not time from rand
   # data$death_surg_time[data$death_30d == "Yes"]
