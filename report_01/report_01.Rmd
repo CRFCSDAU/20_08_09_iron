@@ -173,7 +173,8 @@ This all matches.
 
 ```{r}
 
-  ggplot(fig_2_data, aes(x = time2, y = est, ymax = ul, ymin = ll, color = group)) +
+  ggplot(fig_2_data, aes(x = time2, y = est, ymax = ul, ymin = ll, 
+                         color = group)) +
     geom_line(position = position_dodge(width = 3)) +
     geom_point(position = position_dodge(width = 3)) +
     geom_errorbar(position = "dodge", width = 3) +
@@ -239,7 +240,7 @@ This all matches.
              "Observations" = as.numeric(n.miss(select(table.2.var, -arm))),
              "Control (n = 243; 237)" = summary.1(con),
              "Active (n = 244; 237)" = summary.1(act)) %>% 
-    flextable() %>% autofit()
+    flextable() 
 
   rm(act, con)
 
