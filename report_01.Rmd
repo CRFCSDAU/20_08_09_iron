@@ -15,12 +15,16 @@ output:
   knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, 
                         fig.width  = 6 * 1.67, fig.height = 6)
 
-  proj <- rprojroot::find_rstudio_root_file()
-  knitr::opts_knit$set(root.dir = proj)
+  # proj <- rprojroot::find_rstudio_root_file()
+  # knitr::opts_knit$set(root.dir = proj)
+  # 
+  # load(paste0(proj, "/data/data.RData"))
+  # 
+  # source(paste0(proj, "/scripts/functions.R"))
 
-  load(paste0(proj, "/data/data.RData"))
-  
-  source(paste0(proj, "/scripts/functions.R"))
+  load("data/data.RData")
+
+  source("scripts/functions.R")
   
   library(logbin)
   library(MASS)
@@ -33,10 +37,6 @@ output:
   library(pander)
 
 ```
-
-
-
-
 
 
 There were `r length(unique(data$identifier))` patients in the trial dataset, recruited from `r length(unique(data$siteid))` sites (**NOTE**: the trial paper says 46 sites). 
@@ -93,7 +93,6 @@ Patients were randomized between `r min(data$rand_dt)` and `r max(data$rand_dt)`
 There were `r t2["0", "0"]` patients in the ITT analysis set. 
 
 There were `r table(data$pp)["1"]` patients in the per protocol set. (**NOTE**: The paper lists 388). 
-
 
 # Paper Table 1 (Baseline characteristics)
 
@@ -240,7 +239,7 @@ This all matches.
              "Observations" = as.numeric(n.miss(select(table.2.var, -arm))),
              "Control (n = 243; 237)" = summary.1(con),
              "Active (n = 244; 237)" = summary.1(act)) %>% 
-    flextable() 
+    flextable() %>% autofit()
 
   rm(act, con)
 
