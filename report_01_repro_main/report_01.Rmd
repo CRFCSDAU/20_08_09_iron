@@ -31,10 +31,7 @@ output:
   library(descr)
   library(tidyverse)
   library(viridis)
-  library(flextable)
-  library(patchwork)
   library(knitr)
-  library(pander)
 
 ```
 
@@ -895,8 +892,7 @@ The model results were `r pull_ci(m1)` for all-cause mortality at 30 days, and `
     counts_pct("comp6m", data), 
     total_units("ncomp6m", data)
     ) %>% 
-  flextable() %>%
-  autofit()
+  kable()
 
   m1 <- glm(comp8wk ~ group, data = data, 
             family = binomial(link = "log"), 
