@@ -77,9 +77,9 @@
   data$combined_surg_dt[data$surgyn == "No"] <-
     data$surg_plan_dt[data$surgyn == "No"]
 
-  ggplot(data, aes(surg_dt, surg_plan_dt)) +
-    geom_point() +
-    facet_wrap(~surgyn)
+  # ggplot(data, aes(surg_dt, surg_plan_dt)) +
+  #   geom_point() +
+  #   facet_wrap(~surgyn)
 
   # ggplot(data, aes(combined_surg_dt, surg_plan_dt)) +
   #   geom_point() +
@@ -122,7 +122,16 @@
 
   data$wdraw_or_ltf <- "Completed study"
   data$wdraw_or_ltf[data$wdraw == 1 | data$ltfu == 1] <- "Withdrew or LtF"
-  table(data$wdraw_or_ltf)
+# table(data$wdraw_or_ltf)
+
+# Missing death flag
+# There is one patient with a value for the first primary (death or BT by 30
+# days), but not a death at 30 days flag. It's clear this is just an error so
+# fix it.
+# View(filter(data, !is.na(data$primary_30d) & is.na(data$death_30d)))
+
+  data$death_30d[!is.na(data$primary_30d) & is.na(data$death_30d)] <- "No"
+
 
 # Define ITT
 
@@ -136,13 +145,6 @@
   data$itt_2[!is.na(data$primary_30d)] <- "Yes"
   data$itt_2 <- factor(data$itt_2)
 
-# Missing death flag
-# There is one patient with a value for the first primary (death or BT by 30
-# days), but not a death at 30 days flag. It's clear this is just an error so
-# fix it.
-# (data, !is.na(primary_30d) & is.na(death_30d)) %>% View()
-
-  data$death_30d[!is.na(data$primary_30d) & is.na(data$death_30d)] <- "No"
 
 
 # Categorize baseline HB
@@ -226,6 +228,8 @@
   ) %>% factor()
 
   data$fer_tsat_and[is.na(data$tdl_ferritin_bl) | is.na(data$tdl_tsat_bl)] <- NA
+
+# Need an indicator of a large BT within 30 days of index op.
 
 
 

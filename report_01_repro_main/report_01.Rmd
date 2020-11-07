@@ -15,16 +15,16 @@ output:
   knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, 
                         fig.width  = 6 * 1.67, fig.height = 6)
 
-  # proj <- rprojroot::find_rstudio_root_file()
-  # knitr::opts_knit$set(root.dir = proj)
-  # 
-  # load(paste0(proj, "/data/data.RData"))
-  # 
-  # source(paste0(proj, "/scripts/functions.R"))
+  proj <- rprojroot::find_rstudio_root_file()
+  knitr::opts_knit$set(root.dir = proj)
+  
+  load(paste0(proj, "/data/data.RData"))
+  
+  source(paste0(proj, "/scripts/functions.R"))
 
-  load("data/data.RData")
-
-  source("scripts/functions.R")
+  # load("data/data.RData")
+  # 
+  # source("scripts/functions.R")
   
   library(logbin)
   library(MASS)
@@ -308,6 +308,21 @@ Now we define the ITT sample as having a measure for the first primary at 30 day
     
     return(x$effect[x$term == "groupActive"])
   }
+
+  pull_ci_2 <- function(model){
+    
+    library(broom)
+    x <- tidy(model) %>%
+      mutate(
+        ul = round(estimate + (1.96 * std.error), 2), 
+        ll = round(estimate - (1.96 * std.error), 2), 
+        est = round(estimate, 2), 
+        effect = paste0(est, " (", ll, " to ", ul, ")", "; p = ", 
+                        round(p.value, 2))
+      )
+    
+    return(x$effect[x$term == "groupActive"])
+  }
     
     
 ```
@@ -582,6 +597,331 @@ This matches the paper exactly.
 This all matches. 
 
 
+# Table 4 Secondary and Safety Endpoints
+
+## Units of blood from randomization to 30 days (exluding LBT)
+
+```{r}
+
+  means_sds <- function(var1, dat){
+
+    data <- dat
+      
+    m_p <- mean(
+      data[[var1]][data$group == "Placebo"], na.rm = TRUE
+      ) %>% round(2)
+    m_i <- mean(
+        data[[var1]][data$group == "Active"], na.rm = TRUE
+        ) %>% round(2)
+    s_p <- sd(
+      data[[var1]][data$group == "Placebo"], na.rm = TRUE
+      ) %>% round(2)
+    s_i <- sd(
+        data[[var1]][data$group == "Active"], na.rm = TRUE
+        ) %>% round(2)
+    
+    data_frame(
+      mean_sd = c(paste0(m_p, " (", s_p, ")"), 
+                  paste0(m_i, " (", s_i, ")"))
+      ) %>% 
+      t() %>% 
+      as.data.frame() %>% 
+      rename(Placebo = V1, Iron = V2)
+    
+  }
+
+  med_iqr <- function(var1, dat){
+
+    data <- dat
+      
+    m_p <- median(
+      data[[var1]][data$group == "Placebo"], na.rm = TRUE
+      ) %>% round(2)
+    m_i <- median(
+        data[[var1]][data$group == "Active"], na.rm = TRUE
+        ) %>% round(2)
+    ll_p <- quantile(
+      data[[var1]][data$group == "Placebo"], 0.25, na.rm = TRUE
+      ) %>% round(2)
+    ll_i <- quantile(
+        data[[var1]][data$group == "Active"], 0.25, na.rm = TRUE
+        ) %>% round(2)
+    ul_p <- quantile(
+      data[[var1]][data$group == "Placebo"], 0.75, na.rm = TRUE
+      ) %>% round(2)
+    ul_i <- quantile(
+        data[[var1]][data$group == "Active"], 0.75, na.rm = TRUE
+        ) %>% round(2)
+    
+    data_frame(
+      median_iqr = c(paste0(m_p, " (", ll_p, " to ", ul_p, ")"), 
+                     paste0(m_i, " (", ll_i, " to ", ul_i, ")"))
+      ) %>% 
+      t() %>% 
+      as.data.frame() %>% 
+      rename(Placebo = V1, Iron = V2)
+    
+  }
+  
+  range_ <- function(var1, dat){
+
+    data <- dat
+      
+    min_p <- min(
+      data[[var1]][data$group == "Placebo"], na.rm = TRUE
+      ) %>% round(2)
+    min_i <- min(
+        data[[var1]][data$group == "Active"], na.rm = TRUE
+        ) %>% round(2)
+    max_p <- max(
+      data[[var1]][data$group == "Placebo"], na.rm = TRUE
+      ) %>% round(2)
+    max_i <- max(
+        data[[var1]][data$group == "Active"], na.rm = TRUE
+        ) %>% round(2)
+   
+    
+    data_frame(
+      range = c(paste0(min_p, " to ", max_p), 
+                paste0(min_i, " to ", max_i))
+      ) %>% 
+      t() %>% 
+      as.data.frame() %>% 
+      rename(Placebo = V1, Iron = V2)
+    
+  }
+
+  counts_pct <- function(var1, dat){
+    
+    data <- dat
+    
+    t1 <- table(data$group, data[[var1]])
+    a <- sum(t1[1, c(2:ncol(t1))])
+    b <- sum(t1[1, c(1:ncol(t1))])
+    c <- paste0(a, "/", b, " (", round(a/b * 100, 2), "%)")
+    e <- sum(t1[2, c(2:ncol(t1))])
+    f <- sum(t1[2, c(1:ncol(t1))])
+    g <- paste0(e, "/", f, " (", round(e/f * 100, 2), "%)")
+    
+    data_frame(
+      pct = c(c, g) 
+    ) %>% 
+    t() %>% 
+    as.data.frame() %>% 
+    rename(Placebo = V1, Iron = V2)
+    
+  }
+ 
+  total_units <- function(var1, dat){
+    
+    data <- dat
+
+    t2 <- table(data$group, data[[var1]])
+    h <- sum(t2[1, ] * c(0:(ncol(t2)-1)))
+    i <- sum(t2[2, ] * c(0:(ncol(t2)-1)))
+    
+    data_frame(
+      total_units  = as.character(c(h, i))
+    ) %>% 
+    t() %>% 
+    as.data.frame() %>% 
+    rename(Placebo = V1, Iron = V2)
+    
+  }
+  
+```
+
+```{r}
+
+  bind_rows(
+    means_sds("UNITS_30d_num", data), 
+    counts_pct("BT_30d_num", data), 
+    total_units("UNITS_30d_num", data)
+  ) %>%
+  flextable() %>% autofit()
+
+  m1 <- glm.nb(UNITS_30d_num ~ group, data = data)
+  
+
+```
+
+
+The model result was `r pull_ci(m1)`. The reproduced table doesn't exactly match the results presented in the paper, as both the counts of patients with >= 1 transfusion and the model results are slightly off. This could be because there is no flag for LBT at +30 days, so I wasn't able to confirm those were removed. However, the total counts do match, and a cross-tab of BTs and units did not suggest there were any individuals with LBTs.
+
+
+## Units of blood from randomization to 6 months (exluding LBT)
+
+```{r}
+
+# data_1 <- filter(data, large_BT_6mo == "No")
+
+  bind_rows(
+    means_sds("UNITS_6mo_num", data), 
+    counts_pct("BT_6mo_num", data), 
+    total_units("UNITS_6mo_num", data)
+  ) %>%
+  flextable() %>% autofit()
+
+  m1 <- glm.nb(UNITS_6mo_num ~ group, data = data)
+
+```
+
+The model result was `r pull_ci(m1)`. These figures are again close, but just a bit off. Interestingly, if I remove patients who were flagged for LBT at 6 months (my dataset *does* have that variable), the figures are even further off. **QUERY**
+
+
+## Days alive and out of hospital
+
+```{r}
+
+  means_sds("daoh", data) %>%
+  flextable() %>% autofit()
+
+  m1 <- lm(daoh ~ group, data = data)
+
+```
+
+The model result was `r pull_ci_2(m1)`. This all matches what was reported in the paper.
+
+
+## Postoperative complications (grade 3+)
+
+```{r}
+
+  counts_pct("post_op_comp3", data) %>%
+  flextable() %>% autofit()
+
+  m1 <- glm(post_op_comp3 ~ group, data = data, 
+            family = binomial(link = "log"), 
+            start = c(-1, 0))
+
+```
+
+The model result was `r pull_ci(m1)`. This all matches what was reported in the paper.
+
+
+## MFI questionaiire 
+
+
+```{r}
+
+  bind_rows(
+    means_sds("mfi_total_8wk", data), 
+    means_sds("mfi_total_6mo", data)
+  ) %>%
+  flextable() %>% autofit()
+
+  m1 <- lm(mfi_total_8wk ~ group + mfi_total_bl, data = data)
+  m2 <- lm(mfi_total_6mo ~ group + mfi_total_bl, data = data)
+
+```
+
+The model results were `r pull_ci_2(m1)` for MFI at 8 weeks, and `r pull_ci_2(m2)` for MFI at 6 months. This all matches what was reported in the paper, but I am missing the MFI scores at +10 days. 
+
+
+## EQ-5D-5L
+
+```{r}
+
+  bind_rows(
+    means_sds("eq5d_total_8wk", data),
+    means_sds("eq5d_total_6mo", data),
+    means_sds("eq5d_health_score_8wk", data),
+    means_sds("eq5d_health_score_6mo", data)
+  ) %>%
+  flextable() %>% autofit()
+
+  m1 <- lm(eq5d_total_8wk ~ group + eq5d_total_bl, data = data)
+  m2 <- lm(eq5d_total_6mo ~ group + eq5d_total_bl, data = data)
+  m3 <- lm(eq5d_health_score_8wk ~ group + eq5d_health_score_bl, data = data)
+  m4 <- lm(eq5d_health_score_6mo ~ group + eq5d_health_score_bl, data = data)
+
+```
+
+For the utility score, the model results were `r pull_ci_2(m1)` at 8 weeks, and `r pull_ci_2(m2)` at 6 months. For the health score, the model results were `r pull_ci_2(m3)` at 8 weeks, and `r pull_ci_2(m4)` at 6 months.This all matches what was reported in the paper, but I am missing the MFI scores at +10 days. **QUERY.** 
+
+
+# ICU length of stay
+
+```{r}
+
+  bind_rows(
+    med_iqr("itu_stay", data), 
+    range_("itu_stay", data)
+  ) %>%
+  flextable() %>% autofit()
+
+```
+
+Matches exactly. 
+
+
+# Hospital length of stay
+
+```{r}
+
+  bind_rows(
+    med_iqr("hosp_stay", data), 
+    range_("hosp_stay", data)
+  ) %>%
+  flextable() %>% autofit()
+
+```
+
+Matches exactly. 
+
+## Mortality
+
+```{r}
+  
+  bind_rows(
+    counts_pct("death_30d", data), 
+    counts_pct("death_6mo", data)
+    ) %>%
+  flextable() %>% autofit()
+
+  m1 <- glm(death_30d ~ group, data = data, 
+            family = binomial(link = "log"), 
+            start = c(-1, 0))
+  
+  m2 <- glm(death_6mo ~ group, data = data, 
+          family = binomial(link = "log"), 
+          start = c(-1, 0))
+
+```
+
+The model results were `r pull_ci(m1)` for all-cause mortality at 30 days, and `r pull_ci(m2)` at 6 months. This is off by 1 non-death at 30 days in the Iron group, but otherwise matches exactly. **QUERY** This matches with the one active arm patient missing a death at 30 days measurement but that did have a primary at 30 days measurement (a No).  
+
+
+## Readmission for complications
+
+```{r}
+
+  bind_rows(
+    counts_pct("comp8wk", data), 
+    total_units("ncomp8wk", data), 
+    counts_pct("comp6m", data), 
+    total_units("ncomp6m", data)
+    ) %>% 
+  flextable() %>%
+  autofit()
+
+  m1 <- glm(comp8wk ~ group, data = data, 
+            family = binomial(link = "log"), 
+            start = c(-1, 0))
+  
+  m2 <- glm.nb(ncomp8wk ~ group + offset(log(os8wk)), data = data) 
+  
+  m3 <- glm(comp6m ~ group, data = data, 
+              family = binomial(link = "log"), 
+              start = c(-1, 0))
+  
+  m4 <- glm.nb(ncomp6m ~ group + offset(log(os6m)), data = data) 
+
+```
+
+The model results at 8 weeks were `r pull_ci(m1)` for any complications, and `r pull_ci(m2)` for the number of complications. The model results at 6 months were `r pull_ci(m3)` for any complications, and `r pull_ci(m4)` for the number of complications. This all matches, expect the final model result, which is just slightly off. **QUERY**
+
+
 # Additional subgroup analyses
 
 ## First primary (RR)
@@ -615,6 +955,17 @@ These match almost exactly. The only difference is for the low tsat OR low ferri
 ```
 
 This all matches, except as noted in the previous table, for the same reason. 
+
+
+
+
+
+
+
+
+
+
+
 
 ```{r}
 
