@@ -124,7 +124,6 @@ There were `r table(data$pp)["1"]` patients in the per protocol set. (**NOTE**: 
              "Total (n = 487)" = summary.2(select(table.1.var, -arm)),
              "Control (n = 243)" = summary.2(con),
              "Active (n = 244)" = summary.2(act)) %>% 
-    # flextable() %>% autofit()
     kable()
 
   rm(act, con)
@@ -239,7 +238,7 @@ This all matches.
              "Observations" = as.numeric(n.miss(select(table.2.var, -arm))),
              "Control (n = 243; 237)" = summary.1(con),
              "Active (n = 244; 237)" = summary.1(act)) %>% 
-    flextable() %>% autofit()
+    kable()
 
   rm(act, con)
 
@@ -282,7 +281,7 @@ Now we define the ITT sample as having a measure for the first primary at 30 day
              "Observations" = as.numeric(n.miss(select(table.2.var, -arm))),
              "Control (n = 243; 237)" = summary.1(con),
              "Active (n = 244; 237)" = summary.1(act)) %>% 
-    flextable() %>% autofit()
+    kable()
 
   rm(act, con)
 
@@ -487,7 +486,7 @@ Using a negative-binomial GLM with a log link function, the estimated effect (in
             "tdl_ferritin_bl_cat", "tdl_tsat_bl_cat")
 
   map2_dfr(vars, rep("primary_30d", times = length(vars)), sub_sum_1) %>% 
-    flextable() %>% autofit()
+    kable()
 
 
 ```
@@ -588,7 +587,7 @@ This matches the paper exactly.
             "tdl_ferritin_bl_cat", "tdl_tsat_bl_cat")
 
   map2_dfr(vars, rep("BT_30d_num", times = length(vars)), sub_sum_2) %>% 
-    flextable() %>% autofit()
+    kable()
   
 
 
@@ -738,7 +737,7 @@ This all matches.
     counts_pct("BT_30d_num", data), 
     total_units("UNITS_30d_num", data)
   ) %>%
-  flextable() %>% autofit()
+  kable()
 
   m1 <- glm.nb(UNITS_30d_num ~ group, data = data)
   
@@ -760,7 +759,7 @@ The model result was `r pull_ci(m1)`. The reproduced table doesn't exactly match
     counts_pct("BT_6mo_num", data), 
     total_units("UNITS_6mo_num", data)
   ) %>%
-  flextable() %>% autofit()
+  kable()
 
   m1 <- glm.nb(UNITS_6mo_num ~ group, data = data)
 
@@ -774,7 +773,7 @@ The model result was `r pull_ci(m1)`. These figures are again close, but just a 
 ```{r}
 
   means_sds("daoh", data) %>%
-  flextable() %>% autofit()
+  kable()
 
   m1 <- lm(daoh ~ group, data = data)
 
@@ -788,7 +787,7 @@ The model result was `r pull_ci_2(m1)`. This all matches what was reported in th
 ```{r}
 
   counts_pct("post_op_comp3", data) %>%
-  flextable() %>% autofit()
+  kable()
 
   m1 <- glm(post_op_comp3 ~ group, data = data, 
             family = binomial(link = "log"), 
@@ -808,7 +807,7 @@ The model result was `r pull_ci(m1)`. This all matches what was reported in the 
     means_sds("mfi_total_8wk", data), 
     means_sds("mfi_total_6mo", data)
   ) %>%
-  flextable() %>% autofit()
+  kable()
 
   m1 <- lm(mfi_total_8wk ~ group + mfi_total_bl, data = data)
   m2 <- lm(mfi_total_6mo ~ group + mfi_total_bl, data = data)
@@ -828,7 +827,7 @@ The model results were `r pull_ci_2(m1)` for MFI at 8 weeks, and `r pull_ci_2(m2
     means_sds("eq5d_health_score_8wk", data),
     means_sds("eq5d_health_score_6mo", data)
   ) %>%
-  flextable() %>% autofit()
+  kable()
 
   m1 <- lm(eq5d_total_8wk ~ group + eq5d_total_bl, data = data)
   m2 <- lm(eq5d_total_6mo ~ group + eq5d_total_bl, data = data)
@@ -848,7 +847,7 @@ For the utility score, the model results were `r pull_ci_2(m1)` at 8 weeks, and 
     med_iqr("itu_stay", data), 
     range_("itu_stay", data)
   ) %>%
-  flextable() %>% autofit()
+  kable()
 
 ```
 
@@ -863,7 +862,7 @@ Matches exactly.
     med_iqr("hosp_stay", data), 
     range_("hosp_stay", data)
   ) %>%
-  flextable() %>% autofit()
+  kable()
 
 ```
 
@@ -877,7 +876,7 @@ Matches exactly.
     counts_pct("death_30d", data), 
     counts_pct("death_6mo", data)
     ) %>%
-  flextable() %>% autofit()
+  kable()
 
   m1 <- glm(death_30d ~ group, data = data, 
             family = binomial(link = "log"), 
@@ -933,7 +932,7 @@ The model results at 8 weeks were `r pull_ci(m1)` for any complications, and `r 
             "fer_tsat_and")
 
   map2_dfr(vars, rep("primary_30d", times = length(vars)), sub_sum_1) %>% 
-    flextable() %>% autofit()
+    kable()
 
 
 ```
@@ -949,7 +948,7 @@ These match almost exactly. The only difference is for the low tsat OR low ferri
             "fer_tsat_and")
 
   map2_dfr(vars, rep("BT_30d_num", times = length(vars)), sub_sum_2) %>% 
-    flextable() %>% autofit()
+    kable()
 
 
 ```
