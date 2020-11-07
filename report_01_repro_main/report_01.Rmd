@@ -187,18 +187,12 @@ This all matches.
 
 ## Paper Figure 2 table
 
-```{r, eval = knitr::opts_knit$get("rmarkdown.pandoc.to") == "html"}
+```{r}
 
-  flextable(select(fig_2_data, group, obs, full, time)) %>% autofit()
-
-```
-
-
-```{r, eval = !knitr::opts_knit$get("rmarkdown.pandoc.to") == "html"}
-
-  kable(select(fig_2_data, group, obs, full, time)) 
+  kable(select(fig_2_data, group, obs, full, time))
 
 ```
+
 
 ```{r}
 
