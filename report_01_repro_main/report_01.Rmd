@@ -124,8 +124,8 @@ There were `r table(data$pp)["1"]` patients in the per protocol set. (**NOTE**: 
              "Total (n = 487)" = summary.2(select(table.1.var, -arm)),
              "Control (n = 243)" = summary.2(con),
              "Active (n = 244)" = summary.2(act)) %>% 
-    flextable() %>% autofit()
-
+    # flextable() %>% autofit()
+    kable()
 
   rm(act, con)
   
