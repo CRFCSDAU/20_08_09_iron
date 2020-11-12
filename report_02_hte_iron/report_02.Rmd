@@ -1,0 +1,331 @@
+---
+title: ''
+author: ''
+date: ''
+output: 
+  html_document:
+    df_print: paged
+    keep_md: true
+  word_document:
+    reference_docx: style.1.docx
+---
+
+```{r setup, include = FALSE}
+
+  knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, 
+                        fig.width  = 6 * 1.67, fig.height = 6)
+
+  proj <- rprojroot::find_rstudio_root_file()
+  knitr::opts_knit$set(root.dir = proj)
+  
+  load(paste0(proj, "/data/data.RData"))
+  
+  source(paste0(proj, "/scripts/functions.R"))
+
+  # load("data/data.RData")
+  # 
+  # source("scripts/functions.R")
+  
+  library(logbin)
+  library(MASS)
+  library(descr)
+  library(tidyverse)
+  library(viridis)
+  library(knitr)
+  library(rms)
+  library(Hmisc)
+  library(patchwork)
+  
+  dd <- datadist(data); options(datadist = "dd")
+
+```
+
+
+The original study was restricted to patients with anemia defined as Hb <= 130 for men or <= 120 for women. However, anemia can be caused by factors other than iron deficiency. Measures of ferritin and TSAT (which is a ratio of blood iron to total iron binding capacity) are generally accepted as better markers of actual iron deficiency, and thus more relevant to a trial where the intervention is iron infusion. However, the study wasn't able to measure these quickly enough, on-site, to facilitate patient enrollment onto the trial, so we are left analyzing the data after the fact to evaluate whether any impact of the intervention on outcomes would be different as a function of the degree of actual iron deficiency. We can similarly look at patient Hb response to iron in fusion. 
+
+
+# HTE by baseline lab values 
+
+## Binary outcomes
+
+HTE was estimated using logistic regression models with an interaction between treatment arms and a given baseline lab value (one for each model). Lab values were modeled with restricted cublic splines with 4 knots, and each model is adjusted for age. 
+
+### First co-primary outcome
+
+```{r}
+
+  orm_ <- function(out, var){
+    form_ <- as.formula(paste0(
+      out, " ~ group * rcs(", var,", 4) + rcs(age, 4)"
+    )) 
+    m1 <- lrm(form_, data = data)
+    return(m1)
+  }
+
+```
+
+```{r}
+
+  baseline_labs <- c(
+    "tdl_hb_bl", "tdl_ferritin_bl", "tdl_tsat_bl", "tdl_iron_bl", "tdl_tibc_bl"
+    )
+    
+  baseline_labs_log <- c(
+    "log_tdl_hb_bl", "log_tdl_ferritin_bl", "log_tdl_tsat_bl", "log_tdl_iron_bl", 
+    "log_tdl_tibc_bl"
+    )
+    
+```
+
+```{r}
+
+  models <- map(baseline_labs, orm_, out = "primary_30d")
+
+```
+
+Predicted outcomes from logistic regression models of the primary outcome with an interaction between treatment arm and a given baseline lab value. 
+
+```{r}
+
+  plot_int_orm <- function(model, var, lims){
+     fac <- setNames(list(NA, NA), c(var, "group"))
+     ggplot(Predict(model, var, group, factors = fac)) +
+       coord_cartesian(ylim = lims) +
+       guides(color = FALSE) 
+  }
+
+```
+
+```{r}
+
+  plots <- map2(models, baseline_labs, plot_int_orm, lims = c(-7.5, 2))
+
+  plots[[1]] + plots[[2]] + plots[[3]] + guides(color = guide_legend("")) +
+    plots[[4]] + plots[[5]] 
+
+```
+
+Tests of the interactions
+
+```{r}
+
+  test_int <- function(var, mod){
+    
+    var <- label(data[[var]]) 
+    t1 <- anova(mod)[2, ] %>%
+      t() %>%
+      as.data.frame() %>%
+      mutate(lab_variable = var) %>%
+      select(lab_variable, P, everything()) 
+    
+    t1[map_lgl(t1, is.numeric)] <- map( t1[map_lgl(t1, is.numeric)], round, 2)
+    
+    return(t1)
+  }
+
+```
+
+```{r}
+
+  map2_dfr(baseline_labs, models, test_int)
+
+```
+
+Now with logged values. 
+
+```{r}
+
+  models <- map(baseline_labs_log, orm_, out = "primary_30d")
+
+```
+
+```{r}
+
+  plots <- map2(models, baseline_labs_log, plot_int_orm, lims = c(-5, 2))
+
+  plots[[1]] + plots[[2]] + plots[[3]] + guides(color = guide_legend("")) +
+    plots[[4]] + plots[[5]] 
+
+```
+
+```{r}
+
+  map2_dfr(baseline_labs, models, test_int)
+
+```
+
+### CD grade III or above to discharge
+
+```{r}
+
+  models <- map(baseline_labs, orm_, out = "post_op_comp3")
+
+  plots <- map2(models, baseline_labs, plot_int_orm, lims = c(-10, 0.5))
+
+  plots[[1]] + plots[[2]] + plots[[3]] + guides(color = guide_legend("")) +
+    plots[[4]] + plots[[5]] 
+
+
+```
+
+```{r}
+
+  map2_dfr(baseline_labs, models, test_int)
+
+```
+
+Now with logged values. 
+
+```{r}
+
+  models <- map(baseline_labs_log, orm_, out = "post_op_comp3")
+
+  plots <- map2(models, baseline_labs_log, plot_int_orm, lims = c(-10, 0.5))
+
+  plots[[1]] + plots[[2]] + plots[[3]] + guides(color = guide_legend("")) +
+    plots[[4]] + plots[[5]] 
+
+
+```
+
+
+```{r}
+
+  map2_dfr(baseline_labs_log, models, test_int)
+
+```
+
+### All cause mortality at 6 months
+
+```{r}
+
+  models <- map(baseline_labs, orm_, out = "death_6mo")
+
+  plots <- map2(models, baseline_labs, plot_int_orm, lims = c(-10, 0.5))
+
+  plots[[1]] + plots[[2]] + plots[[3]] + guides(color = guide_legend("")) +
+    plots[[4]] + plots[[5]] 
+
+
+```
+
+
+```{r}
+
+  map2_dfr(baseline_labs, models, test_int)
+
+```
+
+
+Logged values
+
+```{r}
+
+  models <- map(baseline_labs_log, orm_, out = "death_6mo")
+
+  plots <- map2(models, baseline_labs_log, plot_int_orm, lims = c(-10, 0.5))
+
+  plots[[1]] + plots[[2]] + plots[[3]] + guides(color = guide_legend("")) +
+    plots[[4]] + plots[[5]] 
+
+
+```
+
+```{r}
+
+  map2_dfr(baseline_labs_log, models, test_int)
+
+```
+
+
+### Any readmission for complications - Discharge to 8 weeks
+
+```{r}
+
+  models <- map(baseline_labs, orm_, out = "comp8wk")
+
+  plots <- map2(models, baseline_labs, plot_int_orm, lims = c(-5, 0.5))
+
+  plots[[1]] + plots[[2]] + plots[[3]] + guides(color = guide_legend("")) +
+    plots[[4]] + plots[[5]] 
+
+
+```
+
+
+```{r}
+
+  map2_dfr(baseline_labs, models, test_int)
+
+```
+
+Logged values
+
+```{r}
+
+  models <- map(baseline_labs_log, orm_, out = "comp8wk")
+
+  plots <- map2(models, baseline_labs_log, plot_int_orm, lims = c(-5, 0.5))
+
+  plots[[1]] + plots[[2]] + plots[[3]] + guides(color = guide_legend("")) +
+    plots[[4]] + plots[[5]] 
+
+
+```
+
+```{r}
+
+  map2_dfr(baseline_labs_log, models, test_int)
+
+```
+
+
+### Any readmission for complications - Discharge to 6 months
+
+```{r}
+
+  models <- map(baseline_labs, orm_, out = "comp6m")
+
+  plots <- map2(models, baseline_labs, plot_int_orm, lims = c(-2.5, 0.5))
+
+  plots[[1]] + plots[[2]] + plots[[3]] + guides(color = guide_legend("")) +
+    plots[[4]] + plots[[5]] 
+
+
+```
+
+
+```{r}
+
+  map2_dfr(baseline_labs, models, test_int)
+
+```
+
+Logged values
+
+```{r}
+
+  models <- map(baseline_labs_log, orm_, out = "comp6m")
+
+  plots <- map2(models, baseline_labs_log, plot_int_orm, lims = c(-2.5, 0.5))
+
+  plots[[1]] + plots[[2]] + plots[[3]] + guides(color = guide_legend("")) +
+    plots[[4]] + plots[[5]] 
+
+
+```
+
+```{r}
+
+  map2_dfr(baseline_labs_log, models, test_int)
+
+```
+
+
+# End matter
+
+```{r sysinfo}
+
+  DescTools::SysInfo()
+
+```

@@ -4,6 +4,8 @@
   library(testthat)
   library(haven)
   library(lubridate)
+  library(rms)
+  library(Hmisc)
 
 # Data -------------------------------------------------------------------------
 
@@ -231,7 +233,28 @@
 
 # Need an indicator of a large BT within 30 days of index op.
 
+# Does TSAT match with iron and TIBC?
 
+  # data$my_tsat_bl <- (data$tdl_iron_bl / data$tdl_tibc_bl) * 100
+  # plot(data$tdl_tsat_bl, data$my_tsat_bl) NO
+
+# log values of key baseline variables
+
+  data$log_tdl_hb_bl       <- log10(data$tdl_hb_bl)
+  data$log_tdl_ferritin_bl <- log10(data$tdl_ferritin_bl)
+  data$log_tdl_tsat_bl     <- log10(data$tdl_tsat_bl)
+  data$log_tdl_iron_bl     <- log10(data$tdl_iron_bl)
+  data$log_tdl_tibc_bl     <- log10(data$tdl_tibc_bl)
+
+  label(data$log_tdl_hb_bl)       <- paste0(label(data$tdl_hb_bl), " (log10)")
+  label(data$log_tdl_ferritin_bl) <- paste0(label(data$tdl_ferritin_bl), " (log10)")
+  label(data$log_tdl_tsat_bl)     <- paste0(label(data$tdl_tsat_bl), " (log10)")
+  label(data$log_tdl_iron_bl)     <- paste0(label(data$tdl_iron_bl), " (log10)")
+  label(data$log_tdl_tibc_bl)     <- paste0(label(data$tdl_tibc_bl), " (log10)")
+
+# Remove empty rows, columns
+
+  data <- remove_empty(data)
 
 # Inspect data structure -------------------------------------------------------
 
