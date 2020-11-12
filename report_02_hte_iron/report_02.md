@@ -40,11 +40,14 @@ Tests of the interactions
 
 
 
-<div data-pagedtable="false">
-  <script data-pagedtable-source type="application/json">
-{"columns":[{"label":["lab_variable"],"name":[1],"type":["chr"],"align":["left"]},{"label":["P"],"name":[2],"type":["dbl"],"align":["right"]},{"label":["Chi-Square"],"name":[3],"type":["dbl"],"align":["right"]},{"label":["d.f."],"name":[4],"type":["dbl"],"align":["right"]}],"data":[{"1":"TDL baseline Hb g/L","2":"0.94","3":"0.41","4":"3"},{"1":"TDL baseline ferritin","2":"0.44","3":"2.70","4":"3"},{"1":"TDL baseline tsat","2":"0.58","3":"1.99","4":"3"},{"1":"TDL baseline iron","2":"0.63","3":"1.75","4":"3"},{"1":"TDL baseline tibc","2":"0.10","3":"6.15","4":"3"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
-  </script>
-</div>
+
+|lab_variable          |    P| Chi-Square| d.f.|
+|:---------------------|----:|----------:|----:|
+|TDL baseline Hb g/L   | 0.94|       0.41|    3|
+|TDL baseline ferritin | 0.44|       2.70|    3|
+|TDL baseline tsat     | 0.58|       1.99|    3|
+|TDL baseline iron     | 0.63|       1.75|    3|
+|TDL baseline tibc     | 0.10|       6.15|    3|
 
 Now with logged values. 
 
@@ -52,54 +55,69 @@ Now with logged values.
 
 ![](report_02_files/figure-html/unnamed-chunk-9-1.png)<!-- -->
 
-<div data-pagedtable="false">
-  <script data-pagedtable-source type="application/json">
-{"columns":[{"label":["lab_variable"],"name":[1],"type":["chr"],"align":["left"]},{"label":["P"],"name":[2],"type":["dbl"],"align":["right"]},{"label":["Chi-Square"],"name":[3],"type":["dbl"],"align":["right"]},{"label":["d.f."],"name":[4],"type":["dbl"],"align":["right"]}],"data":[{"1":"TDL baseline Hb g/L","2":"0.94","3":"0.40","4":"3"},{"1":"TDL baseline ferritin","2":"0.24","3":"4.17","4":"3"},{"1":"TDL baseline tsat","2":"0.65","3":"1.62","4":"3"},{"1":"TDL baseline iron","2":"0.49","3":"2.43","4":"3"},{"1":"TDL baseline tibc","2":"0.08","3":"6.67","4":"3"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
-  </script>
-</div>
+
+|lab_variable          |    P| Chi-Square| d.f.|
+|:---------------------|----:|----------:|----:|
+|TDL baseline Hb g/L   | 0.94|       0.40|    3|
+|TDL baseline ferritin | 0.24|       4.17|    3|
+|TDL baseline tsat     | 0.65|       1.62|    3|
+|TDL baseline iron     | 0.49|       2.43|    3|
+|TDL baseline tibc     | 0.08|       6.67|    3|
 
 ### CD grade III or above to discharge
 
 ![](report_02_files/figure-html/unnamed-chunk-11-1.png)<!-- -->
 
-<div data-pagedtable="false">
-  <script data-pagedtable-source type="application/json">
-{"columns":[{"label":["lab_variable"],"name":[1],"type":["chr"],"align":["left"]},{"label":["P"],"name":[2],"type":["dbl"],"align":["right"]},{"label":["Chi-Square"],"name":[3],"type":["dbl"],"align":["right"]},{"label":["d.f."],"name":[4],"type":["dbl"],"align":["right"]}],"data":[{"1":"TDL baseline Hb g/L","2":"0.76","3":"1.15","4":"3"},{"1":"TDL baseline ferritin","2":"0.18","3":"4.90","4":"3"},{"1":"TDL baseline tsat","2":"0.84","3":"0.82","4":"3"},{"1":"TDL baseline iron","2":"0.98","3":"0.20","4":"3"},{"1":"TDL baseline tibc","2":"0.23","3":"4.36","4":"3"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
-  </script>
-</div>
+
+|lab_variable          |    P| Chi-Square| d.f.|
+|:---------------------|----:|----------:|----:|
+|TDL baseline Hb g/L   | 0.76|       1.15|    3|
+|TDL baseline ferritin | 0.18|       4.90|    3|
+|TDL baseline tsat     | 0.84|       0.82|    3|
+|TDL baseline iron     | 0.98|       0.20|    3|
+|TDL baseline tibc     | 0.23|       4.36|    3|
 
 Now with logged values. 
 
 ![](report_02_files/figure-html/unnamed-chunk-13-1.png)<!-- -->
 
 
-<div data-pagedtable="false">
-  <script data-pagedtable-source type="application/json">
-{"columns":[{"label":["lab_variable"],"name":[1],"type":["chr"],"align":["left"]},{"label":["P"],"name":[2],"type":["dbl"],"align":["right"]},{"label":["Chi-Square"],"name":[3],"type":["dbl"],"align":["right"]},{"label":["d.f."],"name":[4],"type":["dbl"],"align":["right"]}],"data":[{"1":"TDL baseline Hb g/L (log10)","2":"0.74","3":"1.27","4":"3"},{"1":"TDL baseline ferritin (log10)","2":"0.21","3":"4.56","4":"3"},{"1":"TDL baseline tsat (log10)","2":"0.93","3":"0.44","4":"3"},{"1":"TDL baseline iron (log10)","2":"0.96","3":"0.28","4":"3"},{"1":"TDL baseline tibc (log10)","2":"0.23","3":"4.32","4":"3"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
-  </script>
-</div>
+
+|lab_variable                  |    P| Chi-Square| d.f.|
+|:-----------------------------|----:|----------:|----:|
+|TDL baseline Hb g/L (log10)   | 0.74|       1.27|    3|
+|TDL baseline ferritin (log10) | 0.21|       4.56|    3|
+|TDL baseline tsat (log10)     | 0.93|       0.44|    3|
+|TDL baseline iron (log10)     | 0.96|       0.28|    3|
+|TDL baseline tibc (log10)     | 0.23|       4.32|    3|
 
 ### All cause mortality at 6 months
 
 ![](report_02_files/figure-html/unnamed-chunk-15-1.png)<!-- -->
 
 
-<div data-pagedtable="false">
-  <script data-pagedtable-source type="application/json">
-{"columns":[{"label":["lab_variable"],"name":[1],"type":["chr"],"align":["left"]},{"label":["P"],"name":[2],"type":["dbl"],"align":["right"]},{"label":["Chi-Square"],"name":[3],"type":["dbl"],"align":["right"]},{"label":["d.f."],"name":[4],"type":["dbl"],"align":["right"]}],"data":[{"1":"TDL baseline Hb g/L","2":"0.80","3":"0.99","4":"3"},{"1":"TDL baseline ferritin","2":"0.41","3":"2.86","4":"3"},{"1":"TDL baseline tsat","2":"0.40","3":"2.97","4":"3"},{"1":"TDL baseline iron","2":"0.52","3":"2.27","4":"3"},{"1":"TDL baseline tibc","2":"0.51","3":"2.32","4":"3"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
-  </script>
-</div>
+
+|lab_variable          |    P| Chi-Square| d.f.|
+|:---------------------|----:|----------:|----:|
+|TDL baseline Hb g/L   | 0.80|       0.99|    3|
+|TDL baseline ferritin | 0.41|       2.86|    3|
+|TDL baseline tsat     | 0.40|       2.97|    3|
+|TDL baseline iron     | 0.52|       2.27|    3|
+|TDL baseline tibc     | 0.51|       2.32|    3|
 
 
 Logged values
 
 ![](report_02_files/figure-html/unnamed-chunk-17-1.png)<!-- -->
 
-<div data-pagedtable="false">
-  <script data-pagedtable-source type="application/json">
-{"columns":[{"label":["lab_variable"],"name":[1],"type":["chr"],"align":["left"]},{"label":["P"],"name":[2],"type":["dbl"],"align":["right"]},{"label":["Chi-Square"],"name":[3],"type":["dbl"],"align":["right"]},{"label":["d.f."],"name":[4],"type":["dbl"],"align":["right"]}],"data":[{"1":"TDL baseline Hb g/L (log10)","2":"0.81","3":"0.95","4":"3"},{"1":"TDL baseline ferritin (log10)","2":"0.67","3":"1.56","4":"3"},{"1":"TDL baseline tsat (log10)","2":"0.41","3":"2.86","4":"3"},{"1":"TDL baseline iron (log10)","2":"0.55","3":"2.11","4":"3"},{"1":"TDL baseline tibc (log10)","2":"0.52","3":"2.28","4":"3"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
-  </script>
-</div>
+
+|lab_variable                  |    P| Chi-Square| d.f.|
+|:-----------------------------|----:|----------:|----:|
+|TDL baseline Hb g/L (log10)   | 0.81|       0.95|    3|
+|TDL baseline ferritin (log10) | 0.67|       1.56|    3|
+|TDL baseline tsat (log10)     | 0.41|       2.86|    3|
+|TDL baseline iron (log10)     | 0.55|       2.11|    3|
+|TDL baseline tibc (log10)     | 0.52|       2.28|    3|
 
 
 ### Any readmission for complications - Discharge to 8 weeks
@@ -107,21 +125,27 @@ Logged values
 ![](report_02_files/figure-html/unnamed-chunk-19-1.png)<!-- -->
 
 
-<div data-pagedtable="false">
-  <script data-pagedtable-source type="application/json">
-{"columns":[{"label":["lab_variable"],"name":[1],"type":["chr"],"align":["left"]},{"label":["P"],"name":[2],"type":["dbl"],"align":["right"]},{"label":["Chi-Square"],"name":[3],"type":["dbl"],"align":["right"]},{"label":["d.f."],"name":[4],"type":["dbl"],"align":["right"]}],"data":[{"1":"TDL baseline Hb g/L","2":"0.74","3":"1.25","4":"3"},{"1":"TDL baseline ferritin","2":"0.54","3":"2.14","4":"3"},{"1":"TDL baseline tsat","2":"0.11","3":"5.95","4":"3"},{"1":"TDL baseline iron","2":"0.12","3":"5.83","4":"3"},{"1":"TDL baseline tibc","2":"0.64","3":"1.67","4":"3"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
-  </script>
-</div>
+
+|lab_variable          |    P| Chi-Square| d.f.|
+|:---------------------|----:|----------:|----:|
+|TDL baseline Hb g/L   | 0.74|       1.25|    3|
+|TDL baseline ferritin | 0.54|       2.14|    3|
+|TDL baseline tsat     | 0.11|       5.95|    3|
+|TDL baseline iron     | 0.12|       5.83|    3|
+|TDL baseline tibc     | 0.64|       1.67|    3|
 
 Logged values
 
 ![](report_02_files/figure-html/unnamed-chunk-21-1.png)<!-- -->
 
-<div data-pagedtable="false">
-  <script data-pagedtable-source type="application/json">
-{"columns":[{"label":["lab_variable"],"name":[1],"type":["chr"],"align":["left"]},{"label":["P"],"name":[2],"type":["dbl"],"align":["right"]},{"label":["Chi-Square"],"name":[3],"type":["dbl"],"align":["right"]},{"label":["d.f."],"name":[4],"type":["dbl"],"align":["right"]}],"data":[{"1":"TDL baseline Hb g/L (log10)","2":"0.73","3":"1.32","4":"3"},{"1":"TDL baseline ferritin (log10)","2":"0.61","3":"1.82","4":"3"},{"1":"TDL baseline tsat (log10)","2":"0.14","3":"5.53","4":"3"},{"1":"TDL baseline iron (log10)","2":"0.10","3":"6.18","4":"3"},{"1":"TDL baseline tibc (log10)","2":"0.61","3":"1.82","4":"3"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
-  </script>
-</div>
+
+|lab_variable                  |    P| Chi-Square| d.f.|
+|:-----------------------------|----:|----------:|----:|
+|TDL baseline Hb g/L (log10)   | 0.73|       1.32|    3|
+|TDL baseline ferritin (log10) | 0.61|       1.82|    3|
+|TDL baseline tsat (log10)     | 0.14|       5.53|    3|
+|TDL baseline iron (log10)     | 0.10|       6.18|    3|
+|TDL baseline tibc (log10)     | 0.61|       1.82|    3|
 
 
 ### Any readmission for complications - Discharge to 6 months
@@ -129,21 +153,27 @@ Logged values
 ![](report_02_files/figure-html/unnamed-chunk-23-1.png)<!-- -->
 
 
-<div data-pagedtable="false">
-  <script data-pagedtable-source type="application/json">
-{"columns":[{"label":["lab_variable"],"name":[1],"type":["chr"],"align":["left"]},{"label":["P"],"name":[2],"type":["dbl"],"align":["right"]},{"label":["Chi-Square"],"name":[3],"type":["dbl"],"align":["right"]},{"label":["d.f."],"name":[4],"type":["dbl"],"align":["right"]}],"data":[{"1":"TDL baseline Hb g/L","2":"0.61","3":"1.80","4":"3"},{"1":"TDL baseline ferritin","2":"0.74","3":"1.27","4":"3"},{"1":"TDL baseline tsat","2":"0.19","3":"4.77","4":"3"},{"1":"TDL baseline iron","2":"0.20","3":"4.70","4":"3"},{"1":"TDL baseline tibc","2":"0.96","3":"0.31","4":"3"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
-  </script>
-</div>
+
+|lab_variable          |    P| Chi-Square| d.f.|
+|:---------------------|----:|----------:|----:|
+|TDL baseline Hb g/L   | 0.61|       1.80|    3|
+|TDL baseline ferritin | 0.74|       1.27|    3|
+|TDL baseline tsat     | 0.19|       4.77|    3|
+|TDL baseline iron     | 0.20|       4.70|    3|
+|TDL baseline tibc     | 0.96|       0.31|    3|
 
 Logged values
 
 ![](report_02_files/figure-html/unnamed-chunk-25-1.png)<!-- -->
 
-<div data-pagedtable="false">
-  <script data-pagedtable-source type="application/json">
-{"columns":[{"label":["lab_variable"],"name":[1],"type":["chr"],"align":["left"]},{"label":["P"],"name":[2],"type":["dbl"],"align":["right"]},{"label":["Chi-Square"],"name":[3],"type":["dbl"],"align":["right"]},{"label":["d.f."],"name":[4],"type":["dbl"],"align":["right"]}],"data":[{"1":"TDL baseline Hb g/L (log10)","2":"0.61","3":"1.80","4":"3"},{"1":"TDL baseline ferritin (log10)","2":"0.60","3":"1.86","4":"3"},{"1":"TDL baseline tsat (log10)","2":"0.19","3":"4.78","4":"3"},{"1":"TDL baseline iron (log10)","2":"0.14","3":"5.40","4":"3"},{"1":"TDL baseline tibc (log10)","2":"0.97","3":"0.24","4":"3"}],"options":{"columns":{"min":{},"max":[10]},"rows":{"min":[10],"max":[10]},"pages":{}}}
-  </script>
-</div>
+
+|lab_variable                  |    P| Chi-Square| d.f.|
+|:-----------------------------|----:|----------:|----:|
+|TDL baseline Hb g/L (log10)   | 0.61|       1.80|    3|
+|TDL baseline ferritin (log10) | 0.60|       1.86|    3|
+|TDL baseline tsat (log10)     | 0.19|       4.78|    3|
+|TDL baseline iron (log10)     | 0.14|       5.40|    3|
+|TDL baseline tibc (log10)     | 0.97|       0.24|    3|
 
 
 # End matter

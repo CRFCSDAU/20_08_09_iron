@@ -54,6 +54,10 @@ HTE was estimated using logistic regression models with an interaction between t
 
 ```{r}
 
+  inverse_logit <- function(x){
+    1 / (1 + exp(-x))
+  }
+
   orm_ <- function(out, var){
     form_ <- as.formula(paste0(
       out, " ~ group * rcs(", var,", 4) + rcs(age, 4)"
@@ -127,7 +131,7 @@ Tests of the interactions
 
 ```{r}
 
-  map2_dfr(baseline_labs, models, test_int)
+  map2_dfr(baseline_labs, models, test_int) %>% kable()
 
 ```
 
@@ -150,7 +154,7 @@ Now with logged values.
 
 ```{r}
 
-  map2_dfr(baseline_labs, models, test_int)
+  map2_dfr(baseline_labs, models, test_int) %>% kable()
 
 ```
 
@@ -170,7 +174,7 @@ Now with logged values.
 
 ```{r}
 
-  map2_dfr(baseline_labs, models, test_int)
+  map2_dfr(baseline_labs, models, test_int) %>% kable()
 
 ```
 
@@ -191,7 +195,7 @@ Now with logged values.
 
 ```{r}
 
-  map2_dfr(baseline_labs_log, models, test_int)
+  map2_dfr(baseline_labs_log, models, test_int) %>% kable()
 
 ```
 
@@ -212,7 +216,7 @@ Now with logged values.
 
 ```{r}
 
-  map2_dfr(baseline_labs, models, test_int)
+  map2_dfr(baseline_labs, models, test_int) %>% kable()
 
 ```
 
@@ -233,7 +237,7 @@ Logged values
 
 ```{r}
 
-  map2_dfr(baseline_labs_log, models, test_int)
+  map2_dfr(baseline_labs_log, models, test_int) %>% kable()
 
 ```
 
@@ -255,7 +259,7 @@ Logged values
 
 ```{r}
 
-  map2_dfr(baseline_labs, models, test_int)
+  map2_dfr(baseline_labs, models, test_int) %>% kable()
 
 ```
 
@@ -275,7 +279,7 @@ Logged values
 
 ```{r}
 
-  map2_dfr(baseline_labs_log, models, test_int)
+  map2_dfr(baseline_labs_log, models, test_int) %>% kable()
 
 ```
 
@@ -297,7 +301,7 @@ Logged values
 
 ```{r}
 
-  map2_dfr(baseline_labs, models, test_int)
+  map2_dfr(baseline_labs, models, test_int) %>% kable()
 
 ```
 
@@ -317,7 +321,7 @@ Logged values
 
 ```{r}
 
-  map2_dfr(baseline_labs_log, models, test_int)
+  map2_dfr(baseline_labs_log, models, test_int) %>% kable()
 
 ```
 
