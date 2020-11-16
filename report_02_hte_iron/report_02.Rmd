@@ -40,17 +40,171 @@ output:
 
 ```
 
+```{r}
 
-The original study was restricted to patients with anemia defined as Hb <= 130 for men or <= 120 for women. However, anemia can be caused by factors other than iron deficiency. Measures of ferritin and TSAT (which is a ratio of blood iron to total iron binding capacity) are generally accepted as better markers of actual iron deficiency, and thus more relevant to a trial where the intervention is iron infusion. However, the study wasn't able to measure these quickly enough, on-site, to facilitate patient enrollment onto the trial, so we are left analyzing the data after the fact to evaluate whether any impact of the intervention on outcomes would be different as a function of the degree of actual iron deficiency. We can similarly look at patient Hb response to iron in fusion. 
+  pull_ci <- function(model){
+    
+    library(broom)
+    x <- tidy(model) %>%
+      mutate(
+        ul = round(exp(estimate + (1.96 * std.error)), 2), 
+        ll = round(exp(estimate - (1.96 * std.error)), 2), 
+        est = round(exp(estimate), 2), 
+        effect = paste0(est, " (", ll, " to ", ul, ")", "; p = ", 
+                        round(p.value, 2))
+      )
+    
+    return(x$effect[x$term == "groupActive"])
+  }
+
+  pull_ci_2 <- function(model){
+    
+    library(broom)
+    x <- tidy(model) %>%
+      mutate(
+        ul = round(estimate + (1.96 * std.error), 2), 
+        ll = round(estimate - (1.96 * std.error), 2), 
+        est = round(estimate, 2), 
+        effect = paste0(est, " (", ll, " to ", ul, ")", "; p = ", 
+                        round(p.value, 2))
+      )
+    
+    return(x$effect[x$term == "groupActive"])
+  }
+    
+    
+```
 
 
 # HTE by baseline lab values 
 
 ## Binary outcomes
 
-HTE was estimated using logistic regression models with an interaction between treatment arms and a given baseline lab value (one for each model). Lab values were modeled with restricted cublic splines with 4 knots, and each model is adjusted for age. 
+HTE was estimated using logistic regression models with an interaction between treatment arms and a given baseline lab value (one for each model). Lab values were modeled with restricted cubic splines with 4 knots, and each model is adjusted for age. 
+
+Alternately, HTE was estimated using the same categorized versions of baseline ferritin, TSAT and their combinations (either low and both low), following what was previously done using log binomial models (**Original models**). 
 
 ### First co-primary outcome
+
+#### Original models
+
+```{r}
+
+  pull_tab <- function(tab_1, col_, arm, out){ 
+    paste0(
+      tab_1[levels(data[[out]])[2], col_, arm], 
+      "/", 
+      sum(tab_1[, col_, arm]), 
+      " (",
+      round(
+        tab_1[levels(data[[out]])[2], col_, arm] / sum(tab_1[, col_, arm]), 2
+        ) * 100,
+      "%)"
+    )
+  }
+
+  sub_sum_1 <- function(var, out, ...){
+    
+    if(length(levels(data[[var]])) == 2){
+    
+      # Get the basic table of outcomes by arm by subgroup
+      tab_1 <- table(data[[out]], data[[var]], data[["group"]]) 
+      
+      # Model based estimate in subgroup 1
+      form_1 <- as.formula(paste0(out, " ~ ", "group"))
+      dta <- data[data[[var]] == levels(data[[var]])[1], ]
+      m1 <- glm(form_1, data = dta, family = binomial(link = "log"), 
+                start = c(-1, 0))
+      
+      # Model based estimate in subgroup 2
+      dta <- data[data[[var]] == levels(data[[var]])[2], ]
+      m2 <- glm(form_1, data = dta, family = binomial(link = "log"), 
+                start = c(-1, 0))
+      
+      # LRT p-value for the interaction test
+      form_2 <- as.formula(
+        paste0(out, " ~ ", "group + ", var, " + ", "group * ", var)
+        )
+      m3 <- glm(form_2, data = data, family = binomial(link = "log"), 
+                start = c(-1, 0, 0, 0))
+      pv <- drop1(m3, test = "LRT")[paste0("group:", var), "Pr(>Chi)"]
+      
+      # Put everything into a dataframe
+      out <- data_frame(
+        names  = paste(var, levels(data[[var]])), 
+        placebo = c(pull_tab(tab_1, 1, "Placebo", out), 
+                    pull_tab(tab_1, 2, "Placebo", out)), 
+        active  = c(pull_tab(tab_1, 1, "Active", out),  
+                    pull_tab(tab_1, 2, "Active", out)), 
+        effect = c(pull_ci(m1), pull_ci(m2)), 
+        p = round(pv, 2)
+      )
+    }
+    
+    if(length(levels(data[[var]])) == 3){
+    
+      # Get the basic table of outcomes by arm by subgroup
+      tab_1 <- table(data[[out]], data[[var]], data[["group"]]) 
+      
+      # Model based estimate in subgroup 1
+      form_1 <- as.formula(paste0(out, " ~ ", "group"))
+      dta <- data[data[[var]] == levels(data[[var]])[1], ]
+      m1 <- glm(form_1, data = dta, family = binomial(link = "log"), 
+                start = c(-1, 0))
+      
+      # Model based estimate in subgroup 2
+      dta <- data[data[[var]] == levels(data[[var]])[2], ]
+      m2 <- glm(form_1, data = dta, family = binomial(link = "log"), 
+                start = c(-1, 0))
+      
+      # Model based estimate in subgroup 3
+      dta <- data[data[[var]] == levels(data[[var]])[3], ]
+      m3 <- glm(form_1, data = dta, family = binomial(link = "log"), 
+                start = c(-1, 0))
+      
+      # LRT p-value for the interaction test
+      form_2 <- as.formula(
+        paste0(out, " ~ ", "group + ", var, " + ", "group * ", var)
+        )
+      m4 <- glm(form_2, data = data, family = binomial(link = "log"), 
+                start = c(-1, 0, 0, 0, 0, 0))
+      pv <- drop1(m4, test = "LRT")[paste0("group:", var), "Pr(>Chi)"]
+      
+      # Put everything into a dataframe
+      out <- data_frame(
+        names  = paste(var, levels(data[[var]])), 
+        placebo = c(pull_tab(tab_1, 1, "Placebo", out), 
+                    pull_tab(tab_1, 2, "Placebo", out), 
+                    pull_tab(tab_1, 3, "Placebo", out)),
+        active  = c(pull_tab(tab_1, 1, "Active", out),  
+                    pull_tab(tab_1, 2, "Active", out), 
+                    pull_tab(tab_1, 3, "Active", out)), 
+        effect = c(pull_ci(m1), pull_ci(m2), pull_ci(m3)),
+        p = round(pv, 2)
+      )
+    }
+    
+    return(out)
+    
+  }
+  
+```
+
+
+```{r}
+
+  vars <- c("tdl_ferritin_bl_cat_2",  "tdl_tsat_bl_cat", "fer_tsat_or",
+            "fer_tsat_and")
+
+  map2_dfr(vars, rep("primary_30d", times = length(vars)), sub_sum_1) %>% 
+    kable()
+
+
+```
+
+These match almost exactly. The only difference is for the low tsat OR low ferritin subgroup. In the original analysis it looks like there are 5 individuals with a missing TSAT and a ferritin > 100 but that were counted as *low TSAT OR low ferritin*. 
+
+#### New models
 
 ```{r}
 
@@ -87,7 +241,7 @@ HTE was estimated using logistic regression models with an interaction between t
 
 ```
 
-Predicted outcomes from logistic regression models of the primary outcome with an interaction between treatment arm and a given baseline lab value. 
+Predicted outcomes from logistic regression models of the primary outcome with an interaction between treatment arm and a given baseline lab value (modeled continuously with splines). 
 
 ```{r}
 
@@ -160,6 +314,24 @@ Now with logged values.
 
 ### CD grade III or above to discharge
 
+#### Original models
+
+```{r}
+
+
+  vars <- c("tdl_ferritin_bl_cat_2",  "tdl_tsat_bl_cat", "fer_tsat_or",
+            "fer_tsat_and")
+
+  map2_dfr(vars, rep("post_op_comp3", times = length(vars)), sub_sum_1) %>% 
+    kable()
+
+
+```
+
+#### New models
+
+Predicted outcomes from logistic regression models of the outcome with an interaction between treatment arm and a given baseline lab value (modeled continuously with splines). 
+
 ```{r}
 
   models <- map(baseline_labs, orm_, out = "post_op_comp3")
@@ -201,6 +373,24 @@ Now with logged values.
 
 ### All cause mortality at 6 months
 
+#### Original models 
+
+```{r}
+
+
+  vars <- c("tdl_ferritin_bl_cat_2",  "tdl_tsat_bl_cat", "fer_tsat_or",
+            "fer_tsat_and")
+
+  map2_dfr(vars, rep("death_6mo", times = length(vars)), sub_sum_1) %>% 
+    kable()
+
+
+```
+
+#### New models
+
+Predicted outcomes from logistic regression models of the outcome with an interaction between treatment arm and a given baseline lab value (modeled continuously with splines). 
+
 ```{r}
 
   models <- map(baseline_labs, orm_, out = "death_6mo")
@@ -219,7 +409,6 @@ Now with logged values.
   map2_dfr(baseline_labs, models, test_int) %>% kable()
 
 ```
-
 
 Logged values
 
@@ -243,6 +432,24 @@ Logged values
 
 
 ### Any readmission for complications - Discharge to 8 weeks
+
+#### Original models
+
+```{r}
+
+
+  vars <- c("tdl_ferritin_bl_cat_2",  "tdl_tsat_bl_cat", "fer_tsat_or",
+            "fer_tsat_and")
+
+  map2_dfr(vars, rep("comp8wk", times = length(vars)), sub_sum_1) %>% 
+    kable()
+
+
+```
+
+#### New models
+
+Predicted outcomes from logistic regression models of the outcome with an interaction between treatment arm and a given baseline lab value (modeled continuously with splines).
 
 ```{r}
 
@@ -286,6 +493,24 @@ Logged values
 
 ### Any readmission for complications - Discharge to 6 months
 
+#### Orignal models
+
+```{r}
+
+
+  vars <- c("tdl_ferritin_bl_cat_2",  "tdl_tsat_bl_cat", "fer_tsat_or",
+            "fer_tsat_and")
+
+  map2_dfr(vars, rep("comp6m", times = length(vars)), sub_sum_1) %>% 
+    kable()
+
+
+```
+
+#### New models
+
+Predicted outcomes from logistic regression models of the outcome with an interaction between treatment arm and a given baseline lab value (modeled continuously with splines).
+
 ```{r}
 
   models <- map(baseline_labs, orm_, out = "comp6m")
@@ -312,6 +537,302 @@ Logged values
   models <- map(baseline_labs_log, orm_, out = "comp6m")
 
   plots <- map2(models, baseline_labs_log, plot_int_orm, lims = c(-2.5, 0.5))
+
+  plots[[1]] + plots[[2]] + plots[[3]] + guides(color = guide_legend("")) +
+    plots[[4]] + plots[[5]] 
+
+
+```
+
+```{r}
+
+  map2_dfr(baseline_labs_log, models, test_int) %>% kable()
+
+```
+
+## Count outcomes
+
+HTE was estimated using quasi-poisson models with an interaction between treatment arms and a given baseline lab value (one for each model). Lab values were modeled with restricted cubic splines with 4 knots, and each model is adjusted for age and an offset for time at risk when relevant. (TODO: FIX THE OFFSETS)
+
+Alternately, HTE was estimated using the same categorized versions of baseline ferritin, TSAT and their combinations (either low and both low), following what was previously done with negative binomial models (**Original models**). 
+
+### Second primary outcome - units of blood transfused at 30 days
+
+#### Original models
+
+```{r}
+
+  pull_means <- function(col_, arm, var){ 
+    tar <- data$group == arm & data[[var]] == levels(data[[var]])[col_]
+    summary.1(data[tar, ]["BT_30d_num"])
+  }
+
+  sub_sum_2 <- function(var, out, ...){
+    
+    if(length(levels(data[[var]])) == 2){
+    
+    # Model based estimate in subgroup 1
+    form_1 <- as.formula(paste0(out, " ~ ", "group + offset(log(obs_time_1))"))
+    dta <- data[data[[var]] == levels(data[[var]])[1], ]
+    m1 <- glm.nb(form_1, data = dta)
+    
+    # Model based estimate in subgroup 2
+    dta <- data[data[[var]] == levels(data[[var]])[2], ]
+    m2 <- glm.nb(form_1, data = dta)
+    
+    # LRT p-value for the interaction test
+    form_2 <- as.formula(
+      paste0(out, " ~ ", "group + ", var, " + ", "group * ", var, 
+             " + offset(log(obs_time_1))")
+      )
+    m3 <- glm.nb(form_2, data = data)
+    pv <- drop1(m3, test = "LRT")[paste0("group:", var), "Pr(>Chi)"]
+    
+    # Put everything into a dataframe
+    out <- data_frame(
+      names  = paste(var, levels(data[[var]])), 
+      placebo = c(pull_means(1, "Placebo", var), pull_means(2, "Placebo", var)), 
+      active  = c(pull_means(1, "Active",  var), pull_means(2, "Active",  var)), 
+      effect = c(pull_ci(m1), pull_ci(m2)), 
+      p = round(pv, 2)
+    )
+    
+    }
+    
+    if(length(levels(data[[var]])) == 3){
+    
+    # Model based estimate in subgroup 1
+    form_1 <- as.formula(paste0(out, " ~ ", "group + offset(log(obs_time_1))"))
+    dta <- data[data[[var]] == levels(data[[var]])[1], ]
+    m1 <- glm.nb(form_1, data = dta)
+    
+    # Model based estimate in subgroup 2
+    dta <- data[data[[var]] == levels(data[[var]])[2], ]
+    m2 <- glm.nb(form_1, data = dta)
+    
+    # Model based estimate in subgroup 2
+    dta <- data[data[[var]] == levels(data[[var]])[3], ]
+    m3 <- glm.nb(form_1, data = dta)
+    
+    # LRT p-value for the interaction test
+    form_2 <- as.formula(
+      paste0(out, " ~ ", "group + ", var, " + ", "group * ", var, 
+             " + offset(log(obs_time_1))")
+      )
+    m4 <- glm.nb(form_2, data = data)
+    pv <- drop1(m4, test = "LRT")[paste0("group:", var), "Pr(>Chi)"]
+    
+    # Put everything into a dataframe
+    out <- data_frame(
+      names  = paste(var, levels(data[[var]])), 
+      placebo = c(pull_means(1, "Placebo", var), 
+                  pull_means(2, "Placebo", var), 
+                  pull_means(3, "Placebo", var)), 
+      active  = c(pull_means(1, "Active",  var), 
+                  pull_means(2, "Active",  var), 
+                  pull_means(3, "Active",  var)), 
+      effect = c(pull_ci(m1), pull_ci(m2), pull_ci(m3)), 
+      p = round(pv, 2)
+    )
+    
+    }
+    
+    return(out)
+    
+  }
+  
+  
+  
+```
+
+```{r}
+
+
+  vars <- c("tdl_ferritin_bl_cat_2",  "tdl_tsat_bl_cat", "fer_tsat_or",
+            "fer_tsat_and")
+
+  map2_dfr(vars, rep("BT_30d_num", times = length(vars)), sub_sum_2) %>% 
+    kable()
+
+
+```
+
+#### New models
+
+Predicted outcomes from logistic regression models of the outcome with an interaction between treatment arm and a given baseline lab value (modeled continuously with splines).
+
+```{r}
+
+  quasip_1 <- function(out, var){
+    form_ <- as.formula(paste0(
+      out, " ~ group * rcs(", var, ", 4) + rcs(age, 4) + offset(obs_time_1_log)"
+    )) 
+    m1 <- Glm(form_, family = quasipoisson(), data = data)
+    return(m1)
+  }
+
+  quasip_2 <- function(out, var){
+    form_ <- as.formula(paste0(
+      out, " ~ group * rcs(", var, ", 4) + rcs(age, 4)"
+    )) 
+    m1 <- Glm(form_, family = quasipoisson(), data = data)
+    return(m1)
+  }
+
+  plot_int_qp <- function(model, var, lims){
+     fac <- setNames(list(NA, NA), c(var, "group"))
+     off <- setNames(list(NA), c("obs_time_1_log"))
+     ggplot(Predict(model, var, group, factors = fac, offset = off)) +
+       coord_cartesian(ylim = lims) +
+       guides(color = FALSE) 
+  }
+
+```
+
+
+```{r}
+
+  models <- map(baseline_labs, quasip_1, out = "BT_30d_num")
+
+  plots <- map2(models, baseline_labs, plot_int_qp, lims = c(-10, -2))
+
+  plots[[1]] + plots[[2]] + plots[[3]] + guides(color = guide_legend("")) +
+    plots[[4]] + plots[[5]] 
+
+
+```
+
+```{r}
+
+  map2_dfr(baseline_labs, models, test_int) %>% kable()
+
+```
+
+Logged values
+
+```{r}
+
+  models <- map(baseline_labs_log, quasip_1, out = "BT_30d_num")
+
+  plots <- map2(models, baseline_labs_log, plot_int_qp, lims = c(-8, -2))
+
+  plots[[1]] + plots[[2]] + plots[[3]] + guides(color = guide_legend("")) +
+    plots[[4]] + plots[[5]] 
+
+
+```
+
+
+```{r}
+
+  map2_dfr(baseline_labs_log, models, test_int) %>% kable()
+
+```
+
+### Units of blood to 30 days
+
+#### Original models
+
+```{r}
+
+
+  vars <- c("tdl_ferritin_bl_cat_2",  "tdl_tsat_bl_cat", "fer_tsat_or",
+            "fer_tsat_and")
+
+  map2_dfr(vars, rep("UNITS_30d_num", times = length(vars)), sub_sum_2) %>% 
+    kable()
+
+
+```
+
+#### New models
+
+Predicted outcomes from logistic regression models of the outcome with an interaction between treatment arm and a given baseline lab value (modeled continuously with splines).
+
+```{r}
+
+  models <- map(baseline_labs, quasip_2, out = "BT_30d_num")
+
+  plots <- map2(models, baseline_labs, plot_int_qp, lims = c(-6, 2))
+
+  plots[[1]] + plots[[2]] + plots[[3]] + guides(color = guide_legend("")) +
+    plots[[4]] + plots[[5]] 
+
+
+```
+
+```{r}
+
+  map2_dfr(baseline_labs, models, test_int) %>% kable()
+
+```
+
+Logged values
+
+```{r}
+
+  models <- map(baseline_labs_log, quasip_2, out = "BT_30d_num")
+
+  plots <- map2(models, baseline_labs_log, plot_int_qp, lims = c(-6, 2))
+
+  plots[[1]] + plots[[2]] + plots[[3]] + guides(color = guide_legend("")) +
+    plots[[4]] + plots[[5]] 
+
+
+```
+
+```{r}
+
+  map2_dfr(baseline_labs_log, models, test_int) %>% kable()
+
+```
+
+
+### Units of blood to 6 months (exluding LBT)
+
+#### Original models
+
+```{r}
+
+
+  vars <- c("tdl_ferritin_bl_cat_2",  "tdl_tsat_bl_cat", "fer_tsat_or",
+            "fer_tsat_and")
+
+  map2_dfr(vars, rep("UNITS_6mo_num", times = length(vars)), sub_sum_2) %>% 
+    kable()
+
+
+```
+
+#### New models
+
+Predicted outcomes from logistic regression models of the outcome with an interaction between treatment arm and a given baseline lab value (modeled continuously with splines).
+
+```{r}
+
+  models <- map(baseline_labs, quasip_2, out = "UNITS_6mo_num")
+
+  plots <- map2(models, baseline_labs, plot_int_qp, lims = c(-6, 2))
+
+  plots[[1]] + plots[[2]] + plots[[3]] + guides(color = guide_legend("")) +
+    plots[[4]] + plots[[5]] 
+
+
+```
+
+```{r}
+
+  map2_dfr(baseline_labs, models, test_int) %>% kable()
+
+```
+
+Logged values
+
+```{r}
+
+  models <- map(baseline_labs_log, quasip_2, out = "UNITS_6mo_num")
+
+  plots <- map2(models, baseline_labs_log, plot_int_qp, lims = c(-6, 2))
 
   plots[[1]] + plots[[2]] + plots[[3]] + guides(color = guide_legend("")) +
     plots[[4]] + plots[[5]] 

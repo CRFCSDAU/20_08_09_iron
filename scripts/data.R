@@ -215,13 +215,15 @@
 
 
 # These are the combined subgroups from the additional analysis
-  data$fer_tsat_or <- ifelse(
-    data$tdl_ferritin_bl < 100 | data$tdl_tsat_bl < 20,
-    "tdl_ferritin_bl < 100 OR tdl_tsat_bl < 20",
-    "tdl_ferritin_bl >= 100 and tdl_tsat_bl >= 20"
-  ) %>% factor()
-# The ifelse doesn't consider the missing values, so fix that here.
-  data$fer_tsat_or[is.na(data$tdl_ferritin_bl) | is.na(data$tdl_tsat_bl)] <- NA
+  data$fer_tsat_or[data$tdl_ferritin_bl < 100 & !is.na(data$tdl_ferritin_bl)] <-
+    "tdl_ferritin_bl < 100 OR tdl_tsat_bl < 20"
+  data$fer_tsat_or[data$tdl_tsat_bl < 20 & !is.na(data$tdl_ferritin_bl)] <-
+    "tdl_ferritin_bl < 100 OR tdl_tsat_bl < 20"
+  tar <- (!is.na(data$tdl_ferritin_bl) & !is.na(data$tdl_tsat_bl)) &
+    is.na(data$fer_tsat_or)
+  data$fer_tsat_or[tar] <- "tdl_ferritin_bl >= 100 and tdl_tsat_bl >= 20"
+  data$fer_tsat_or <- factor(data$fer_tsat_or)
+
 
   data$fer_tsat_and <- ifelse(
     data$tdl_ferritin_bl < 100 & data$tdl_tsat_bl < 20,
@@ -251,6 +253,9 @@
   label(data$log_tdl_tsat_bl)     <- paste0(label(data$tdl_tsat_bl), " (log10)")
   label(data$log_tdl_iron_bl)     <- paste0(label(data$tdl_iron_bl), " (log10)")
   label(data$log_tdl_tibc_bl)     <- paste0(label(data$tdl_tibc_bl), " (log10)")
+
+  data$obs_time_1_log <- log(data$obs_time_1)
+
 
 # Remove empty rows, columns
 

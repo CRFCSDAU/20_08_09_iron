@@ -32,6 +32,8 @@ output:
   library(tidyverse)
   library(viridis)
   library(knitr)
+  
+  select <- dplyr::select # Deals with conflict between dplyr and MASS with select
 
 ```
 
@@ -730,7 +732,7 @@ This all matches.
   ) %>%
   kable()
 
-  m1 <- glm.nb(UNITS_30d_num ~ group, data = data)
+  m1 <- glm.nb(UNITS_30d_num ~ group + offset(log(obs_time_1)), data = data)
   
 
 ```
@@ -745,14 +747,18 @@ The model result was `r pull_ci(m1)`. The reproduced table doesn't exactly match
 
 # data_1 <- filter(data, large_BT_6mo == "No")
 
+ dat <- filter(data, !is.na(primary_30d))
+
   bind_rows(
-    means_sds("UNITS_6mo_num", data), 
-    counts_pct("BT_6mo_num", data), 
-    total_units("UNITS_6mo_num", data)
+    means_sds("UNITS_6mo_num", dat), 
+    counts_pct("BT_6mo_num", dat), 
+    total_units("UNITS_6mo_num", dat)
   ) %>%
   kable()
 
-  m1 <- glm.nb(UNITS_6mo_num ~ group, data = data)
+ 
+
+  m1 <- glm.nb(UNITS_6mo_num ~ group, data = dat) # Fix offset...had missings
 
 ```
 
@@ -927,7 +933,22 @@ The model results at 8 weeks were `r pull_ci(m1)` for any complications, and `r 
 
 ```
 
-These match almost exactly. The only difference is for the low tsat OR low ferritin subgroup. I don't think they accounted for missing values in their OR statement, whereas I have a missing value for the subgroup flag if you are missing either a tsat or ferritin value. 
+These match almost exactly. The only difference is for the low tsat OR low ferritin subgroup. In the original analysis it looks like there are 5 individuals with a missing TSAT and a ferritin > 100 but that were counted as *low TSAT OR low ferritin*. 
+
+```{r}
+
+  # Here are the 5 instances of this. 
+
+  # table(data$fer_tsat_or)
+  # table(data$fer_tsat_or[!is.na(data$primary_30d)]) # diff == 5
+
+  # filter(data, is.na(fer_tsat_or)) %>% 
+  #   select(fer_tsat_or, tdl_ferritin_bl, tdl_tsat_bl) %>%
+  #   View()
+
+```
+
+
 
 ## Second primary (IRR)
 
