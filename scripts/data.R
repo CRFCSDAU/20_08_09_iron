@@ -118,6 +118,11 @@
     data$death_rand_time[data$death_surg_time <= 30 & !is.na(data$death_surg_time)]
   data$obs_time_1[is.na(data$obs_time_1)] <- data$rand_surg_time[is.na(data$obs_time_1)] + 30
 
+  data$obs_time_2 <- NA
+  data$obs_time_2[data$death_surg_time <= 180 & !is.na(data$death_surg_time)] <-
+    data$death_rand_time[data$death_surg_time <= 180 & !is.na(data$death_surg_time)]
+  data$obs_time_2[is.na(data$obs_time_2)] <- data$rand_surg_time[is.na(data$obs_time_2)] + 180
+
 # Flag withdraws or LtF
 
   # with(data, table(wdraw, ltfu, useNA = "always"))
@@ -255,7 +260,7 @@
   label(data$log_tdl_tibc_bl)     <- paste0(label(data$tdl_tibc_bl), " (log10)")
 
   data$obs_time_1_log <- log(data$obs_time_1)
-
+  data$obs_time_2_log <- log(data$obs_time_2)
 
 # Remove empty rows, columns
 

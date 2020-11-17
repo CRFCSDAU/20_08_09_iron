@@ -42,6 +42,9 @@ output:
 
 ```{r}
 
+# Pull confidence intervals for the treatment effect from a model (with and
+# without exponentiation)
+
   pull_ci <- function(model){
     
     library(broom)
@@ -90,6 +93,8 @@ Alternately, HTE was estimated using the same categorized versions of baseline f
 
 ```{r}
 
+# Pulls the key summary info our of a given table
+
   pull_tab <- function(tab_1, col_, arm, out){ 
     paste0(
       tab_1[levels(data[[out]])[2], col_, arm], 
@@ -102,6 +107,9 @@ Alternately, HTE was estimated using the same categorized versions of baseline f
       "%)"
     )
   }
+
+# Subgroup specific estimates and test of the overall interaction, log binomial
+# models
 
   sub_sum_1 <- function(var, out, ...){
     
@@ -193,10 +201,10 @@ Alternately, HTE was estimated using the same categorized versions of baseline f
 
 ```{r}
 
-  vars <- c("tdl_ferritin_bl_cat_2",  "tdl_tsat_bl_cat", "fer_tsat_or",
+  int_vars <- c("tdl_ferritin_bl_cat_2",  "tdl_tsat_bl_cat", "fer_tsat_or",
             "fer_tsat_and")
 
-  map2_dfr(vars, rep("primary_30d", times = length(vars)), sub_sum_1) %>% 
+  map2_dfr(int_vars, rep("primary_30d", times = length(vars)), sub_sum_1) %>% 
     kable()
 
 
@@ -212,7 +220,9 @@ These match almost exactly. The only difference is for the low tsat OR low ferri
     1 / (1 + exp(-x))
   }
 
-  orm_ <- function(out, var){
+
+# Estimate logistic regression model taking a lab variable as a predictor
+  lrm_ <- function(out, var){
     form_ <- as.formula(paste0(
       out, " ~ group * rcs(", var,", 4) + rcs(age, 4)"
     )) 
@@ -224,20 +234,22 @@ These match almost exactly. The only difference is for the low tsat OR low ferri
 
 ```{r}
 
+# The various lab variables we want to consider
+
   baseline_labs <- c(
     "tdl_hb_bl", "tdl_ferritin_bl", "tdl_tsat_bl", "tdl_iron_bl", "tdl_tibc_bl"
     )
     
   baseline_labs_log <- c(
-    "log_tdl_hb_bl", "log_tdl_ferritin_bl", "log_tdl_tsat_bl", "log_tdl_iron_bl", 
-    "log_tdl_tibc_bl"
+    "log_tdl_hb_bl", "log_tdl_ferritin_bl", "log_tdl_tsat_bl",
+    "log_tdl_iron_bl", "log_tdl_tibc_bl"
     )
     
 ```
 
 ```{r}
 
-  models <- map(baseline_labs, orm_, out = "primary_30d")
+  models <- map(baseline_labs, lrm_, out = "primary_30d")
 
 ```
 
@@ -245,7 +257,7 @@ Predicted outcomes from logistic regression models of the primary outcome with a
 
 ```{r}
 
-  plot_int_orm <- function(model, var, lims){
+  plot_int_lrm <- function(model, var, lims){
      fac <- setNames(list(NA, NA), c(var, "group"))
      ggplot(Predict(model, var, group, factors = fac)) +
        coord_cartesian(ylim = lims) +
@@ -256,7 +268,7 @@ Predicted outcomes from logistic regression models of the primary outcome with a
 
 ```{r}
 
-  plots <- map2(models, baseline_labs, plot_int_orm, lims = c(-7.5, 2))
+  plots <- map2(models, baseline_labs, plot_int_lrm, lims = c(-5, 2))
 
   plots[[1]] + plots[[2]] + plots[[3]] + guides(color = guide_legend("")) +
     plots[[4]] + plots[[5]] 
@@ -293,13 +305,13 @@ Now with logged values.
 
 ```{r}
 
-  models <- map(baseline_labs_log, orm_, out = "primary_30d")
+  models <- map(baseline_labs_log, lrm_, out = "primary_30d")
 
 ```
 
 ```{r}
 
-  plots <- map2(models, baseline_labs_log, plot_int_orm, lims = c(-5, 2))
+  plots <- map2(models, baseline_labs_log, plot_int_lrm, lims = c(-3, 2))
 
   plots[[1]] + plots[[2]] + plots[[3]] + guides(color = guide_legend("")) +
     plots[[4]] + plots[[5]] 
@@ -318,13 +330,8 @@ Now with logged values.
 
 ```{r}
 
-
-  vars <- c("tdl_ferritin_bl_cat_2",  "tdl_tsat_bl_cat", "fer_tsat_or",
-            "fer_tsat_and")
-
-  map2_dfr(vars, rep("post_op_comp3", times = length(vars)), sub_sum_1) %>% 
+  map2_dfr(int_vars, rep("post_op_comp3", times = length(vars)), sub_sum_1) %>% 
     kable()
-
 
 ```
 
@@ -334,9 +341,9 @@ Predicted outcomes from logistic regression models of the outcome with an intera
 
 ```{r}
 
-  models <- map(baseline_labs, orm_, out = "post_op_comp3")
+  models <- map(baseline_labs, lrm_, out = "post_op_comp3")
 
-  plots <- map2(models, baseline_labs, plot_int_orm, lims = c(-10, 0.5))
+  plots <- map2(models, baseline_labs, plot_int_lrm, lims = c(-10, 0.5))
 
   plots[[1]] + plots[[2]] + plots[[3]] + guides(color = guide_legend("")) +
     plots[[4]] + plots[[5]] 
@@ -354,9 +361,9 @@ Now with logged values.
 
 ```{r}
 
-  models <- map(baseline_labs_log, orm_, out = "post_op_comp3")
+  models <- map(baseline_labs_log, lrm_, out = "post_op_comp3")
 
-  plots <- map2(models, baseline_labs_log, plot_int_orm, lims = c(-10, 0.5))
+  plots <- map2(models, baseline_labs_log, plot_int_lrm, lims = c(-10, 0.5))
 
   plots[[1]] + plots[[2]] + plots[[3]] + guides(color = guide_legend("")) +
     plots[[4]] + plots[[5]] 
@@ -377,13 +384,8 @@ Now with logged values.
 
 ```{r}
 
-
-  vars <- c("tdl_ferritin_bl_cat_2",  "tdl_tsat_bl_cat", "fer_tsat_or",
-            "fer_tsat_and")
-
-  map2_dfr(vars, rep("death_6mo", times = length(vars)), sub_sum_1) %>% 
+  map2_dfr(int_vars, rep("death_6mo", times = length(vars)), sub_sum_1) %>% 
     kable()
-
 
 ```
 
@@ -393,9 +395,9 @@ Predicted outcomes from logistic regression models of the outcome with an intera
 
 ```{r}
 
-  models <- map(baseline_labs, orm_, out = "death_6mo")
+  models <- map(baseline_labs, lrm_, out = "death_6mo")
 
-  plots <- map2(models, baseline_labs, plot_int_orm, lims = c(-10, 0.5))
+  plots <- map2(models, baseline_labs, plot_int_lrm, lims = c(-10, 0.5))
 
   plots[[1]] + plots[[2]] + plots[[3]] + guides(color = guide_legend("")) +
     plots[[4]] + plots[[5]] 
@@ -414,9 +416,9 @@ Logged values
 
 ```{r}
 
-  models <- map(baseline_labs_log, orm_, out = "death_6mo")
+  models <- map(baseline_labs_log, lrm_, out = "death_6mo")
 
-  plots <- map2(models, baseline_labs_log, plot_int_orm, lims = c(-10, 0.5))
+  plots <- map2(models, baseline_labs_log, plot_int_lrm, lims = c(-10, 0.5))
 
   plots[[1]] + plots[[2]] + plots[[3]] + guides(color = guide_legend("")) +
     plots[[4]] + plots[[5]] 
@@ -437,13 +439,8 @@ Logged values
 
 ```{r}
 
-
-  vars <- c("tdl_ferritin_bl_cat_2",  "tdl_tsat_bl_cat", "fer_tsat_or",
-            "fer_tsat_and")
-
-  map2_dfr(vars, rep("comp8wk", times = length(vars)), sub_sum_1) %>% 
+  map2_dfr(int_vars, rep("comp8wk", times = length(vars)), sub_sum_1) %>% 
     kable()
-
 
 ```
 
@@ -453,9 +450,9 @@ Predicted outcomes from logistic regression models of the outcome with an intera
 
 ```{r}
 
-  models <- map(baseline_labs, orm_, out = "comp8wk")
+  models <- map(baseline_labs, lrm_, out = "comp8wk")
 
-  plots <- map2(models, baseline_labs, plot_int_orm, lims = c(-5, 0.5))
+  plots <- map2(models, baseline_labs, plot_int_lrm, lims = c(-5, 0.5))
 
   plots[[1]] + plots[[2]] + plots[[3]] + guides(color = guide_legend("")) +
     plots[[4]] + plots[[5]] 
@@ -474,9 +471,9 @@ Logged values
 
 ```{r}
 
-  models <- map(baseline_labs_log, orm_, out = "comp8wk")
+  models <- map(baseline_labs_log, lrm_, out = "comp8wk")
 
-  plots <- map2(models, baseline_labs_log, plot_int_orm, lims = c(-5, 0.5))
+  plots <- map2(models, baseline_labs_log, plot_int_lrm, lims = c(-5, 0.5))
 
   plots[[1]] + plots[[2]] + plots[[3]] + guides(color = guide_legend("")) +
     plots[[4]] + plots[[5]] 
@@ -497,13 +494,8 @@ Logged values
 
 ```{r}
 
-
-  vars <- c("tdl_ferritin_bl_cat_2",  "tdl_tsat_bl_cat", "fer_tsat_or",
-            "fer_tsat_and")
-
-  map2_dfr(vars, rep("comp6m", times = length(vars)), sub_sum_1) %>% 
+  map2_dfr(int_vars, rep("comp6m", times = length(vars)), sub_sum_1) %>% 
     kable()
-
 
 ```
 
@@ -513,9 +505,9 @@ Predicted outcomes from logistic regression models of the outcome with an intera
 
 ```{r}
 
-  models <- map(baseline_labs, orm_, out = "comp6m")
+  models <- map(baseline_labs, lrm_, out = "comp6m")
 
-  plots <- map2(models, baseline_labs, plot_int_orm, lims = c(-2.5, 0.5))
+  plots <- map2(models, baseline_labs, plot_int_lrm, lims = c(-2.5, 0.5))
 
   plots[[1]] + plots[[2]] + plots[[3]] + guides(color = guide_legend("")) +
     plots[[4]] + plots[[5]] 
@@ -534,9 +526,9 @@ Logged values
 
 ```{r}
 
-  models <- map(baseline_labs_log, orm_, out = "comp6m")
+  models <- map(baseline_labs_log, lrm_, out = "comp6m")
 
-  plots <- map2(models, baseline_labs_log, plot_int_orm, lims = c(-2.5, 0.5))
+  plots <- map2(models, baseline_labs_log, plot_int_lrm, lims = c(-2.5, 0.5))
 
   plots[[1]] + plots[[2]] + plots[[3]] + guides(color = guide_legend("")) +
     plots[[4]] + plots[[5]] 
@@ -552,11 +544,11 @@ Logged values
 
 ## Count outcomes
 
-HTE was estimated using quasi-poisson models with an interaction between treatment arms and a given baseline lab value (one for each model). Lab values were modeled with restricted cubic splines with 4 knots, and each model is adjusted for age and an offset for time at risk when relevant. (TODO: FIX THE OFFSETS)
+HTE was estimated using quasi-poisson models with an interaction between treatment arms and a given baseline lab value (one for each model). Lab values were modeled with restricted cubic splines with 4 knots, and each model is adjusted for age and an offset for time at risk when relevant.
 
 Alternately, HTE was estimated using the same categorized versions of baseline ferritin, TSAT and their combinations (either low and both low), following what was previously done with negative binomial models (**Original models**). 
 
-### Second primary outcome - units of blood transfused at 30 days
+### Second primary outcome - Number of tranfusions at 30 days
 
 #### Original models
 
@@ -567,12 +559,18 @@ Alternately, HTE was estimated using the same categorized versions of baseline f
     summary.1(data[tar, ]["BT_30d_num"])
   }
 
-  sub_sum_2 <- function(var, out, ...){
+  sub_sum_2 <- function(var, out, offset, ...){
     
     if(length(levels(data[[var]])) == 2){
     
     # Model based estimate in subgroup 1
-    form_1 <- as.formula(paste0(out, " ~ ", "group + offset(log(obs_time_1))"))
+      if(!is.null(offset)){
+        form_1 <- as.formula(
+          paste0(out, " ~ ", "group + offset(log(", offset, "))")
+          )
+      }else{
+        form_1 <- as.formula(paste0(out, " ~ ", "group"))
+      }
     dta <- data[data[[var]] == levels(data[[var]])[1], ]
     m1 <- glm.nb(form_1, data = dta)
     
@@ -581,10 +579,17 @@ Alternately, HTE was estimated using the same categorized versions of baseline f
     m2 <- glm.nb(form_1, data = dta)
     
     # LRT p-value for the interaction test
-    form_2 <- as.formula(
-      paste0(out, " ~ ", "group + ", var, " + ", "group * ", var, 
-             " + offset(log(obs_time_1))")
-      )
+    if(!is.null(offset)){
+        form_2 <- as.formula(
+          paste0(out, " ~ ", "group + ", var, " + ", "group * ", var, 
+             " + offset(log(", offset, "))")
+          )
+      }else{
+        form_2 <- as.formula(
+          paste0(out, " ~ ", "group + ", var, " + ", "group * ", var)
+          )
+      }
+    
     m3 <- glm.nb(form_2, data = data)
     pv <- drop1(m3, test = "LRT")[paste0("group:", var), "Pr(>Chi)"]
     
@@ -602,7 +607,13 @@ Alternately, HTE was estimated using the same categorized versions of baseline f
     if(length(levels(data[[var]])) == 3){
     
     # Model based estimate in subgroup 1
-    form_1 <- as.formula(paste0(out, " ~ ", "group + offset(log(obs_time_1))"))
+    if(is.null(offset)){
+        form_1 <- as.formula(
+          paste0(out, " ~ ", "group + offset(log(", offset, "))")
+          )
+      }else{
+        form_1 <- as.formula(paste0(out, " ~ ", "group"))
+      }
     dta <- data[data[[var]] == levels(data[[var]])[1], ]
     m1 <- glm.nb(form_1, data = dta)
     
@@ -615,10 +626,16 @@ Alternately, HTE was estimated using the same categorized versions of baseline f
     m3 <- glm.nb(form_1, data = dta)
     
     # LRT p-value for the interaction test
-    form_2 <- as.formula(
-      paste0(out, " ~ ", "group + ", var, " + ", "group * ", var, 
-             " + offset(log(obs_time_1))")
-      )
+    if(!is.null(offset)){
+        form_2 <- as.formula(
+          paste0(out, " ~ ", "group + ", var, " + ", "group * ", var, 
+             " + offset(log(", offset, "))")
+          )
+      }else{
+        form_2 <- as.formula(
+          paste0(out, " ~ ", "group + ", var, " + ", "group * ", var)
+          )
+      }
     m4 <- glm.nb(form_2, data = data)
     pv <- drop1(m4, test = "LRT")[paste0("group:", var), "Pr(>Chi)"]
     
@@ -641,36 +658,35 @@ Alternately, HTE was estimated using the same categorized versions of baseline f
     
   }
   
-  
-  
 ```
 
 ```{r}
 
-
-  vars <- c("tdl_ferritin_bl_cat_2",  "tdl_tsat_bl_cat", "fer_tsat_or",
-            "fer_tsat_and")
-
-  map2_dfr(vars, rep("BT_30d_num", times = length(vars)), sub_sum_2) %>% 
+  map2_dfr(int_vars, rep("BT_30d_num", times = length(vars)), sub_sum_2, 
+           offset = "obs_time_1") %>% 
     kable()
 
-
 ```
+ (30 day mortality offset makes this match original result)
+
 
 #### New models
 
-Predicted outcomes from logistic regression models of the outcome with an interaction between treatment arm and a given baseline lab value (modeled continuously with splines).
+Predicted outcomes from quasi-Poison regression models of the outcome with an interaction between treatment arm and a given baseline lab value (modeled continuously with splines).
 
 ```{r}
 
-  quasip_1 <- function(out, var){
+# With offset
+  quasip_1 <- function(out, var, offset){
     form_ <- as.formula(paste0(
-      out, " ~ group * rcs(", var, ", 4) + rcs(age, 4) + offset(obs_time_1_log)"
+      out, " ~ group * rcs(", var, ", 4) + rcs(age, 4) + offset(", 
+      offset, ")"
     )) 
     m1 <- Glm(form_, family = quasipoisson(), data = data)
     return(m1)
   }
 
+# No offset
   quasip_2 <- function(out, var){
     form_ <- as.formula(paste0(
       out, " ~ group * rcs(", var, ", 4) + rcs(age, 4)"
@@ -692,7 +708,8 @@ Predicted outcomes from logistic regression models of the outcome with an intera
 
 ```{r}
 
-  models <- map(baseline_labs, quasip_1, out = "BT_30d_num")
+  models <- map(baseline_labs, quasip_1, out = "BT_30d_num", 
+                offset = "obs_time_1_log")
 
   plots <- map2(models, baseline_labs, plot_int_qp, lims = c(-10, -2))
 
@@ -712,16 +729,15 @@ Logged values
 
 ```{r}
 
-  models <- map(baseline_labs_log, quasip_1, out = "BT_30d_num")
+  models <- map(baseline_labs_log, quasip_1, out = "BT_30d_num", 
+                offset = "obs_time_1_log")
 
   plots <- map2(models, baseline_labs_log, plot_int_qp, lims = c(-8, -2))
 
   plots[[1]] + plots[[2]] + plots[[3]] + guides(color = guide_legend("")) +
     plots[[4]] + plots[[5]] 
 
-
 ```
-
 
 ```{r}
 
@@ -729,19 +745,15 @@ Logged values
 
 ```
 
-### Units of blood to 30 days
+### Units of blood to 30 days (excluding LBT)
 
 #### Original models
 
 ```{r}
 
-
-  vars <- c("tdl_ferritin_bl_cat_2",  "tdl_tsat_bl_cat", "fer_tsat_or",
-            "fer_tsat_and")
-
-  map2_dfr(vars, rep("UNITS_30d_num", times = length(vars)), sub_sum_2) %>% 
+  map2_dfr(int_vars, rep("UNITS_30d_num", times = length(vars)), sub_sum_2, 
+           offset = "obs_time_1") %>% 
     kable()
-
 
 ```
 
@@ -751,9 +763,10 @@ Predicted outcomes from logistic regression models of the outcome with an intera
 
 ```{r}
 
-  models <- map(baseline_labs, quasip_2, out = "BT_30d_num")
+  models <- map(baseline_labs, quasip_1, out = "UNITS_30d_num", 
+                offset = "obs_time_1_log")
 
-  plots <- map2(models, baseline_labs, plot_int_qp, lims = c(-6, 2))
+  plots <- map2(models, baseline_labs, plot_int_qp, lims = c(-6, -3))
 
   plots[[1]] + plots[[2]] + plots[[3]] + guides(color = guide_legend("")) +
     plots[[4]] + plots[[5]] 
@@ -771,13 +784,13 @@ Logged values
 
 ```{r}
 
-  models <- map(baseline_labs_log, quasip_2, out = "BT_30d_num")
+  models <- map(baseline_labs_log, quasip_1, out = "UNITS_30d_num", 
+                offset = "obs_time_1_log")
 
-  plots <- map2(models, baseline_labs_log, plot_int_qp, lims = c(-6, 2))
+  plots <- map2(models, baseline_labs_log, plot_int_qp, lims = c(-6, -3))
 
   plots[[1]] + plots[[2]] + plots[[3]] + guides(color = guide_legend("")) +
     plots[[4]] + plots[[5]] 
-
 
 ```
 
@@ -794,13 +807,9 @@ Logged values
 
 ```{r}
 
-
-  vars <- c("tdl_ferritin_bl_cat_2",  "tdl_tsat_bl_cat", "fer_tsat_or",
-            "fer_tsat_and")
-
-  map2_dfr(vars, rep("UNITS_6mo_num", times = length(vars)), sub_sum_2) %>% 
+  map2_dfr(int_vars, rep("UNITS_6mo_num", times = length(vars)), sub_sum_2, 
+           offset = "obs_time_2") %>% 
     kable()
-
 
 ```
 
@@ -810,13 +819,13 @@ Predicted outcomes from logistic regression models of the outcome with an intera
 
 ```{r}
 
-  models <- map(baseline_labs, quasip_2, out = "UNITS_6mo_num")
+  models <- map(baseline_labs, quasip_1, out = "UNITS_6mo_num", 
+                offset = "obs_time_1_log")
 
-  plots <- map2(models, baseline_labs, plot_int_qp, lims = c(-6, 2))
+  plots <- map2(models, baseline_labs, plot_int_qp, lims = c(-6, -2))
 
   plots[[1]] + plots[[2]] + plots[[3]] + guides(color = guide_legend("")) +
     plots[[4]] + plots[[5]] 
-
 
 ```
 
@@ -832,11 +841,10 @@ Logged values
 
   models <- map(baseline_labs_log, quasip_2, out = "UNITS_6mo_num")
 
-  plots <- map2(models, baseline_labs_log, plot_int_qp, lims = c(-6, 2))
+  plots <- map2(models, baseline_labs_log, plot_int_qp, lims = c(-2, 2))
 
   plots[[1]] + plots[[2]] + plots[[3]] + guides(color = guide_legend("")) +
     plots[[4]] + plots[[5]] 
-
 
 ```
 
