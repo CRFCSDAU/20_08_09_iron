@@ -275,11 +275,11 @@ Logged values
 
 ## Count outcomes
 
-HTE was estimated using quasi-poisson models with an interaction between treatment arms and a given baseline lab value (one for each model). Lab values were modeled with restricted cubic splines with 4 knots, and each model is adjusted for age and an offset for time at risk when relevant. (TODO: FIX THE OFFSETS)
+HTE was estimated using quasi-poisson models with an interaction between treatment arms and a given baseline lab value (one for each model). Lab values were modeled with restricted cubic splines with 4 knots, and each model is adjusted for age and an offset for time at risk when relevant.
 
 Alternately, HTE was estimated using the same categorized versions of baseline ferritin, TSAT and their combinations (either low and both low), following what was previously done with negative binomial models (**Original models**). 
 
-### Second primary outcome - units of blood transfused at 30 days
+### Second primary outcome - Number of tranfusions at 30 days
 
 #### Original models
 
@@ -288,19 +288,21 @@ Alternately, HTE was estimated using the same categorized versions of baseline f
 
 |names                                                    |placebo   |active    |effect                        |    p|
 |:--------------------------------------------------------|:---------|:---------|:-----------------------------|----:|
-|tdl_ferritin_bl_cat_2 < 30                               |0.5 ± 1.1 |0.2 ± 0.5 |0.48 (0.21 to 1.07); p = 0.07 | 0.06|
-|tdl_ferritin_bl_cat_2 30 - 100                           |0.4 ± 0.9 |0.7 ± 1.3 |1.56 (0.75 to 3.23); p = 0.23 | 0.06|
-|tdl_ferritin_bl_cat_2 >= 100                             |0.5 ± 0.8 |0.5 ± 0.9 |1.07 (0.65 to 1.78); p = 0.78 | 0.06|
+|tdl_ferritin_bl_cat_2 < 30                               |0.5 ± 1.1 |0.2 ± 0.5 |0.45 (0.2 to 0.98); p = 0.04  | 0.06|
+|tdl_ferritin_bl_cat_2 30 - 100                           |0.4 ± 0.9 |0.7 ± 1.3 |1.53 (0.75 to 3.1); p = 0.24  | 0.06|
+|tdl_ferritin_bl_cat_2 >= 100                             |0.5 ± 0.8 |0.5 ± 0.9 |1.04 (0.64 to 1.7); p = 0.87  | 0.06|
 |tdl_tsat_bl_cat < 20                                     |0.5 ± 1   |0.5 ± 1   |0.92 (0.6 to 1.4); p = 0.7    | 0.29|
 |tdl_tsat_bl_cat >= 20                                    |0.3 ± 0.7 |0.4 ± 0.7 |1.55 (0.63 to 3.8); p = 0.34  | 0.29|
 |fer_tsat_or tdl_ferritin_bl < 100 OR tdl_tsat_bl < 20    |0.5 ± 1   |0.5 ± 1   |0.95 (0.63 to 1.43); p = 0.8  | 0.29|
 |fer_tsat_or tdl_ferritin_bl >= 100 and tdl_tsat_bl >= 20 |0.3 ± 0.6 |0.4 ± 0.8 |1.72 (0.66 to 4.51); p = 0.27 | 0.29|
 |fer_tsat_and tdl_ferritin_bl < 100 AND tdl_tsat_bl < 20  |0.5 ± 1   |0.4 ± 0.9 |0.88 (0.49 to 1.55); p = 0.65 | 0.51|
 |fer_tsat_and tdl_ferritin_bl >= 100 or tdl_tsat_bl >= 20 |0.5 ± 0.8 |0.5 ± 0.9 |1.14 (0.69 to 1.89); p = 0.61 | 0.51|
+ (30 day mortality offset makes this match original result)
+
 
 #### New models
 
-Predicted outcomes from logistic regression models of the outcome with an interaction between treatment arm and a given baseline lab value (modeled continuously with splines).
+Predicted outcomes from quasi-Poison regression models of the outcome with an interaction between treatment arm and a given baseline lab value (modeled continuously with splines).
 
 
 
@@ -321,7 +323,6 @@ Logged values
 ![](report_02_files/figure-html/unnamed-chunk-39-1.png)<!-- -->
 
 
-
 |lab_variable                  |    P| Chi-Square| d.f.|
 |:-----------------------------|----:|----------:|----:|
 |TDL baseline Hb g/L (log10)   | 0.95|       0.37|    3|
@@ -330,16 +331,16 @@ Logged values
 |TDL baseline iron (log10)     | 0.52|       2.28|    3|
 |TDL baseline tibc (log10)     | 0.27|       3.89|    3|
 
-### Units of blood to 30 days
+### Units of blood to 30 days (excluding LBT)
 
 #### Original models
 
 
 |names                                                    |placebo   |active    |effect                        |    p|
 |:--------------------------------------------------------|:---------|:---------|:-----------------------------|----:|
-|tdl_ferritin_bl_cat_2 < 30                               |0.5 ± 1.1 |0.2 ± 0.5 |0.46 (0.19 to 1.11); p = 0.08 | 0.08|
-|tdl_ferritin_bl_cat_2 30 - 100                           |0.4 ± 0.9 |0.7 ± 1.3 |1.55 (0.71 to 3.38); p = 0.27 | 0.08|
-|tdl_ferritin_bl_cat_2 >= 100                             |0.5 ± 0.8 |0.5 ± 0.9 |1.08 (0.6 to 1.93); p = 0.8   | 0.08|
+|tdl_ferritin_bl_cat_2 < 30                               |0.5 ± 1.1 |0.2 ± 0.5 |0.42 (0.18 to 1.01); p = 0.05 | 0.08|
+|tdl_ferritin_bl_cat_2 30 - 100                           |0.4 ± 0.9 |0.7 ± 1.3 |1.52 (0.71 to 3.29); p = 0.28 | 0.08|
+|tdl_ferritin_bl_cat_2 >= 100                             |0.5 ± 0.8 |0.5 ± 0.9 |1.04 (0.59 to 1.84); p = 0.89 | 0.08|
 |tdl_tsat_bl_cat < 20                                     |0.5 ± 1   |0.5 ± 1   |0.92 (0.57 to 1.47); p = 0.72 | 0.31|
 |tdl_tsat_bl_cat >= 20                                    |0.3 ± 0.7 |0.4 ± 0.7 |1.58 (0.58 to 4.26); p = 0.37 | 0.31|
 |fer_tsat_or tdl_ferritin_bl < 100 OR tdl_tsat_bl < 20    |0.5 ± 1   |0.5 ± 1   |0.95 (0.6 to 1.5); p = 0.81   | 0.41|
@@ -356,11 +357,11 @@ Predicted outcomes from logistic regression models of the outcome with an intera
 
 |lab_variable          |    P| Chi-Square| d.f.|
 |:---------------------|----:|----------:|----:|
-|TDL baseline Hb g/L   | 0.93|       0.45|    3|
-|TDL baseline ferritin | 0.18|       4.90|    3|
-|TDL baseline tsat     | 0.14|       5.43|    3|
-|TDL baseline iron     | 0.29|       3.71|    3|
-|TDL baseline tibc     | 0.24|       4.22|    3|
+|TDL baseline Hb g/L   | 0.99|       0.13|    3|
+|TDL baseline ferritin | 0.13|       5.64|    3|
+|TDL baseline tsat     | 0.21|       4.54|    3|
+|TDL baseline iron     | 0.30|       3.66|    3|
+|TDL baseline tibc     | 0.14|       5.45|    3|
 
 Logged values
 
@@ -369,11 +370,11 @@ Logged values
 
 |lab_variable                  |    P| Chi-Square| d.f.|
 |:-----------------------------|----:|----------:|----:|
-|TDL baseline Hb g/L (log10)   | 0.88|       0.67|    3|
-|TDL baseline ferritin (log10) | 0.12|       5.87|    3|
-|TDL baseline tsat (log10)     | 0.25|       4.07|    3|
-|TDL baseline iron (log10)     | 0.30|       3.68|    3|
-|TDL baseline tibc (log10)     | 0.23|       4.34|    3|
+|TDL baseline Hb g/L (log10)   | 0.99|       0.13|    3|
+|TDL baseline ferritin (log10) | 0.15|       5.32|    3|
+|TDL baseline tsat (log10)     | 0.30|       3.64|    3|
+|TDL baseline iron (log10)     | 0.29|       3.73|    3|
+|TDL baseline tibc (log10)     | 0.14|       5.48|    3|
 
 
 ### Units of blood to 6 months (exluding LBT)
@@ -383,15 +384,15 @@ Logged values
 
 |names                                                    |placebo   |active    |effect                        |    p|
 |:--------------------------------------------------------|:---------|:---------|:-----------------------------|----:|
-|tdl_ferritin_bl_cat_2 < 30                               |0.5 ± 1.1 |0.2 ± 0.5 |0.61 (0.26 to 1.4); p = 0.24  | 0.24|
-|tdl_ferritin_bl_cat_2 30 - 100                           |0.4 ± 0.9 |0.7 ± 1.3 |1.5 (0.68 to 3.29); p = 0.31  | 0.24|
-|tdl_ferritin_bl_cat_2 >= 100                             |0.5 ± 0.8 |0.5 ± 0.9 |0.76 (0.43 to 1.35); p = 0.34 | 0.24|
-|tdl_tsat_bl_cat < 20                                     |0.5 ± 1   |0.5 ± 1   |0.8 (0.5 to 1.27); p = 0.34   | 0.20|
-|tdl_tsat_bl_cat >= 20                                    |0.3 ± 0.7 |0.4 ± 0.7 |1.55 (0.61 to 3.94); p = 0.35 | 0.20|
-|fer_tsat_or tdl_ferritin_bl < 100 OR tdl_tsat_bl < 20    |0.5 ± 1   |0.5 ± 1   |0.84 (0.53 to 1.31); p = 0.44 | 0.36|
-|fer_tsat_or tdl_ferritin_bl >= 100 and tdl_tsat_bl >= 20 |0.3 ± 0.6 |0.4 ± 0.8 |1.41 (0.5 to 3.96); p = 0.52  | 0.36|
-|fer_tsat_and tdl_ferritin_bl < 100 AND tdl_tsat_bl < 20  |0.5 ± 1   |0.4 ± 0.9 |0.94 (0.51 to 1.73); p = 0.83 | 0.82|
-|fer_tsat_and tdl_ferritin_bl >= 100 or tdl_tsat_bl >= 20 |0.5 ± 0.8 |0.5 ± 0.9 |0.85 (0.48 to 1.49); p = 0.57 | 0.82|
+|tdl_ferritin_bl_cat_2 < 30                               |0.5 ± 1.1 |0.2 ± 0.5 |0.56 (0.25 to 1.26); p = 0.16 | 0.25|
+|tdl_ferritin_bl_cat_2 30 - 100                           |0.4 ± 0.9 |0.7 ± 1.3 |1.51 (0.7 to 3.25); p = 0.3   | 0.25|
+|tdl_ferritin_bl_cat_2 >= 100                             |0.5 ± 0.8 |0.5 ± 0.9 |0.75 (0.43 to 1.31); p = 0.31 | 0.25|
+|tdl_tsat_bl_cat < 20                                     |0.5 ± 1   |0.5 ± 1   |0.76 (0.47 to 1.21); p = 0.25 | 0.10|
+|tdl_tsat_bl_cat >= 20                                    |0.3 ± 0.7 |0.4 ± 0.7 |1.79 (0.69 to 4.63); p = 0.23 | 0.10|
+|fer_tsat_or tdl_ferritin_bl < 100 OR tdl_tsat_bl < 20    |0.5 ± 1   |0.5 ± 1   |0.79 (0.5 to 1.25); p = 0.32  | 0.22|
+|fer_tsat_or tdl_ferritin_bl >= 100 and tdl_tsat_bl >= 20 |0.3 ± 0.6 |0.4 ± 0.8 |1.64 (0.56 to 4.79); p = 0.37 | 0.22|
+|fer_tsat_and tdl_ferritin_bl < 100 AND tdl_tsat_bl < 20  |0.5 ± 1   |0.4 ± 0.9 |0.95 (0.51 to 1.77); p = 0.87 | 0.73|
+|fer_tsat_and tdl_ferritin_bl >= 100 or tdl_tsat_bl >= 20 |0.5 ± 0.8 |0.5 ± 0.9 |0.82 (0.46 to 1.45); p = 0.49 | 0.73|
 
 #### New models
 
@@ -403,10 +404,10 @@ Predicted outcomes from logistic regression models of the outcome with an intera
 |lab_variable          |    P| Chi-Square| d.f.|
 |:---------------------|----:|----------:|----:|
 |TDL baseline Hb g/L   | 0.52|       2.27|    3|
-|TDL baseline ferritin | 0.09|       6.61|    3|
-|TDL baseline tsat     | 0.51|       2.29|    3|
-|TDL baseline iron     | 0.35|       3.28|    3|
-|TDL baseline tibc     | 0.09|       6.43|    3|
+|TDL baseline ferritin | 0.13|       5.67|    3|
+|TDL baseline tsat     | 0.66|       1.58|    3|
+|TDL baseline iron     | 0.54|       2.14|    3|
+|TDL baseline tibc     | 0.14|       5.54|    3|
 
 Logged values
 
