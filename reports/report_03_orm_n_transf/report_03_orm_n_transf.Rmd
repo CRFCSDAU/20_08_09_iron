@@ -1,0 +1,126 @@
+---
+title: ''
+author: ''
+date: ''
+output: 
+  html_document:
+    df_print: paged
+    keep_md: true
+  word_document:
+    reference_docx: style.1.docx
+---
+
+```{r setup, include = FALSE}
+
+  knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, 
+                        fig.width  = 6 * 1.67, fig.height = 6)
+
+  proj <- rprojroot::find_rstudio_root_file()
+  knitr::opts_knit$set(root.dir = proj)
+  
+  load(paste0(proj, "/data/data.RData"))
+  
+  source(paste0(proj, "/scripts/functions.R"))
+
+  # load("data/data.RData")
+  # 
+  # source("scripts/functions.R")
+  
+  library(logbin)
+  library(MASS)
+  library(descr)
+  library(tidyverse)
+  library(viridis)
+  library(knitr)
+  library(rms)
+  library(Hmisc)
+  library(sjPlot)
+  
+  select <- dplyr::select # Deals with conflict between dplyr and MASS with select
+
+```
+
+
+```{r}
+
+  pull_ci <- function(model){
+    
+    library(broom)
+    x <- tidy(model) %>%
+      mutate(
+        ul = round(exp(estimate + (1.96 * std.error)), 2), 
+        ll = round(exp(estimate - (1.96 * std.error)), 2), 
+        est = round(exp(estimate), 2), 
+        effect = paste0(est, " (", ll, " to ", ul, ")", "; p = ", 
+                        round(p.value, 2))
+      )
+    
+    return(x$effect[x$term == "groupActive"])
+  }
+
+```
+
+# Re-analysis of the 2nd co-primary endpoint using the proportional odds model
+
+The second co-primary outcome in PREVENTT was the number of RBC transfusions in 30 days post-surgery, excluding large blood transfusions (>= 4 units). Spahn *et al*. reported a similar endpoint, which was the transfusion count by day 7, excluding "massive" transfusions (≥10 RBC transfusions per 24 h). 
+
+The distribution of this endpoint in PREVENTT as reported in the trial paper was as follows:
+
+```{r}
+
+  table.2.var <- data %>%
+    select(
+      arm = group, BT_30d_num_cat, BT_30d_num
+    )
+  
+  act <- filter(table.2.var, arm == "Active") %>% select(-arm)
+  con <- filter(table.2.var, arm == "Placebo") %>% select(-arm)
+
+  data_frame("Variable" = c("Number of RBC transfusions", 0:6, "Mean +/- SD"),
+             "Control (n = 237)" = summary.1(con),
+             "Active (n = 237)" = summary.1(act)) %>% 
+    kable()
+
+  rm(act, con)
+
+  m1_prim_b <- glm.nb(BT_30d_num ~ group + offset(log(obs_time_1)), data = data) 
+
+```
+
+In PREVENTT this outcome was analyzed as a count variable using a negative-binomial regression, resulting in an estimated incidence rate ratio (IRR) of `r  pull_ci(m1_prim_b)`. 
+
+However, in Spahn *et al.* they treated their version of this outcome as an ordered, categorical variable and analyzed it using ordered logistic regression (likely the so-called proportional odds model, but it's not entirely clear), which is also a perfectly reasonable thing to do (with one caveat, which is that it's not clear how they accounted for death or discharge before 7 days - I suspect these were just ignored, e.g. someone with 2 transfusions in 7 days was probably treated the same as someone with 2 transfusions but that died on day 1, but I can't be sure). 
+
+The results from a proportional odds model can be a bit confusing for the unwary, since they report a single odds ratio (OR) capturing the effect of a predictor on an outcome with > 2 categories. To understand how the model does this, first think of all the different ways we could collapse our outcome with 7 categories (0-6 transfusions) into a binary outcome. For example, we could turn the outcome into a binary variable by comparing those with 0 transfusions to those with 1 or more; or by comparing those with 0 or 1 transfusions to those with 2 or more (and so on). Now imagine that for each of those "new" binary outcomes you estimated a treatment effect using good old fashioned logistic regression, each returning a single OR. Finally, imagine taking an appropriately weighted average of those ORs. That is basically the OR you get from a proportional odds model. 
+
+
+```{r}
+
+  m2_orm <- orm(BT_30d_num_cat ~ group, data = data)
+
+  est <- m2_orm$coefficients["group=Active"]
+  se <- 0.2008
+  result <- paste0(
+    round(exp(est), 2), 
+    " (", 
+    round(exp(est - (1.96 * se)), 2),
+    " to ",
+    round(exp(est + (1.96 * se)), 2),
+    ")"
+  )
+
+
+```
+
+For PREVENTT, this OR was `r result`, while the the corresponding result for Spahn *et al*. was an OR of 0.70 (0.50 to 0.98). Looking at the Spahn result, I'm not surprised they saw a pretty substantial effect whereas this was absent in PREVENTT. Their data are spread out more across the categories, with only ~50% in the 0 transfusions group and ~10% in the 5+ transfusions group. This is compared to PREVENTT, where ~70% are in the 0 transfusions group, and few very had more than 2 transfusions. So while you see a small difference in PREVENTT comparing active to placebo in 1 vs 2 transfusions, I'm not surprised that it doesn't result in a compelling overall difference when analyzed as an ordered categorical variable. 
+
+
+# End matter
+
+```{r sysinfo}
+
+  DescTools::SysInfo()
+
+```
+
+
