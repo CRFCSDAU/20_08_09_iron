@@ -13,8 +13,6 @@ output:
 
 
 
-
-
 # Re-analysis of the 2nd co-primary endpoint using the proportional odds model
 
 The second co-primary outcome in PREVENTT was the number of RBC transfusions in 30 days post-surgery, excluding large blood transfusions (>= 4 units). Spahn *et al*. reported a similar endpoint, which was the transfusion count by day 7, excluding "massive" transfusions (≥10 RBC transfusions per 24 h). 

@@ -14,7 +14,6 @@ output:
 
 
 
-
 # HTE by baseline lab values 
 
 ## Binary outcomes
@@ -26,9 +25,6 @@ Alternately, HTE was estimated using the same categorized versions of baseline f
 ### First co-primary outcome
 
 #### Original models
-
-
-
 
 
 |names                                                    |placebo      |active       |effect                        |    p|
@@ -51,17 +47,11 @@ These match almost exactly. The only difference is for the low tsat OR low ferri
 
 
 
-
-
 Predicted outcomes from logistic regression models of the primary outcome with an interaction between treatment arm and a given baseline lab value (modeled continuously with splines). 
 
-
-
-![](report_02_files/figure-html/unnamed-chunk-8-1.png)<!-- -->
+![](report_02_files/figure-html/unnamed-chunk-4-1.png)<!-- -->
 
 Tests of the interactions
-
-
 
 
 |lab_variable          |    P| Chi-Square| d.f.|
@@ -76,7 +66,7 @@ Now with logged values.
 
 
 
-![](report_02_files/figure-html/unnamed-chunk-12-1.png)<!-- -->
+![](report_02_files/figure-html/unnamed-chunk-7-1.png)<!-- -->
 
 
 |lab_variable          |    P| Chi-Square| d.f.|
@@ -108,7 +98,7 @@ Now with logged values.
 
 Predicted outcomes from logistic regression models of the outcome with an interaction between treatment arm and a given baseline lab value (modeled continuously with splines). 
 
-![](report_02_files/figure-html/unnamed-chunk-15-1.png)<!-- -->
+![](report_02_files/figure-html/unnamed-chunk-10-1.png)<!-- -->
 
 
 |lab_variable          |    P| Chi-Square| d.f.|
@@ -121,7 +111,7 @@ Predicted outcomes from logistic regression models of the outcome with an intera
 
 Now with logged values. 
 
-![](report_02_files/figure-html/unnamed-chunk-17-1.png)<!-- -->
+![](report_02_files/figure-html/unnamed-chunk-12-1.png)<!-- -->
 
 
 
@@ -154,7 +144,7 @@ Now with logged values.
 
 Predicted outcomes from logistic regression models of the outcome with an interaction between treatment arm and a given baseline lab value (modeled continuously with splines). 
 
-![](report_02_files/figure-html/unnamed-chunk-20-1.png)<!-- -->
+![](report_02_files/figure-html/unnamed-chunk-15-1.png)<!-- -->
 
 
 
@@ -168,7 +158,7 @@ Predicted outcomes from logistic regression models of the outcome with an intera
 
 Logged values
 
-![](report_02_files/figure-html/unnamed-chunk-22-1.png)<!-- -->
+![](report_02_files/figure-html/unnamed-chunk-17-1.png)<!-- -->
 
 
 |lab_variable                  |    P| Chi-Square| d.f.|
@@ -201,7 +191,7 @@ Logged values
 
 Predicted outcomes from logistic regression models of the outcome with an interaction between treatment arm and a given baseline lab value (modeled continuously with splines).
 
-![](report_02_files/figure-html/unnamed-chunk-25-1.png)<!-- -->
+![](report_02_files/figure-html/unnamed-chunk-20-1.png)<!-- -->
 
 
 
@@ -215,7 +205,7 @@ Predicted outcomes from logistic regression models of the outcome with an intera
 
 Logged values
 
-![](report_02_files/figure-html/unnamed-chunk-27-1.png)<!-- -->
+![](report_02_files/figure-html/unnamed-chunk-22-1.png)<!-- -->
 
 
 |lab_variable                  |    P| Chi-Square| d.f.|
@@ -248,7 +238,7 @@ Logged values
 
 Predicted outcomes from logistic regression models of the outcome with an interaction between treatment arm and a given baseline lab value (modeled continuously with splines).
 
-![](report_02_files/figure-html/unnamed-chunk-30-1.png)<!-- -->
+![](report_02_files/figure-html/unnamed-chunk-25-1.png)<!-- -->
 
 
 
@@ -262,7 +252,7 @@ Predicted outcomes from logistic regression models of the outcome with an intera
 
 Logged values
 
-![](report_02_files/figure-html/unnamed-chunk-32-1.png)<!-- -->
+![](report_02_files/figure-html/unnamed-chunk-27-1.png)<!-- -->
 
 
 |lab_variable                  |    P| Chi-Square| d.f.|
@@ -288,9 +278,9 @@ Alternately, HTE was estimated using the same categorized versions of baseline f
 
 |names                                                    |placebo   |active    |effect                        |    p|
 |:--------------------------------------------------------|:---------|:---------|:-----------------------------|----:|
-|tdl_ferritin_bl_cat_2 < 30                               |0.5 ± 1.1 |0.2 ± 0.5 |0.45 (0.2 to 0.98); p = 0.04  | 0.06|
-|tdl_ferritin_bl_cat_2 30 - 100                           |0.4 ± 0.9 |0.7 ± 1.3 |1.53 (0.75 to 3.1); p = 0.24  | 0.06|
-|tdl_ferritin_bl_cat_2 >= 100                             |0.5 ± 0.8 |0.5 ± 0.9 |1.04 (0.64 to 1.7); p = 0.87  | 0.06|
+|tdl_ferritin_bl_cat_2 < 30                               |0.5 ± 1.1 |0.2 ± 0.5 |0.48 (0.21 to 1.07); p = 0.07 | 0.06|
+|tdl_ferritin_bl_cat_2 30 - 100                           |0.4 ± 0.9 |0.7 ± 1.3 |1.56 (0.75 to 3.23); p = 0.23 | 0.06|
+|tdl_ferritin_bl_cat_2 >= 100                             |0.5 ± 0.8 |0.5 ± 0.9 |1.07 (0.65 to 1.78); p = 0.78 | 0.06|
 |tdl_tsat_bl_cat < 20                                     |0.5 ± 1   |0.5 ± 1   |0.92 (0.6 to 1.4); p = 0.7    | 0.29|
 |tdl_tsat_bl_cat >= 20                                    |0.3 ± 0.7 |0.4 ± 0.7 |1.55 (0.63 to 3.8); p = 0.34  | 0.29|
 |fer_tsat_or tdl_ferritin_bl < 100 OR tdl_tsat_bl < 20    |0.5 ± 1   |0.5 ± 1   |0.95 (0.63 to 1.43); p = 0.8  | 0.29|
@@ -304,10 +294,7 @@ Alternately, HTE was estimated using the same categorized versions of baseline f
 
 Predicted outcomes from quasi-Poison regression models of the outcome with an interaction between treatment arm and a given baseline lab value (modeled continuously with splines).
 
-
-
-
-![](report_02_files/figure-html/unnamed-chunk-37-1.png)<!-- -->
+![](report_02_files/figure-html/unnamed-chunk-30-1.png)<!-- -->
 
 
 |lab_variable          |    P| Chi-Square| d.f.|
@@ -318,9 +305,11 @@ Predicted outcomes from quasi-Poison regression models of the outcome with an in
 |TDL baseline iron     | 0.52|       2.24|    3|
 |TDL baseline tibc     | 0.28|       3.82|    3|
 
+![](report_02_files/figure-html/unnamed-chunk-32-1.png)<!-- -->
+
 Logged values
 
-![](report_02_files/figure-html/unnamed-chunk-39-1.png)<!-- -->
+![](report_02_files/figure-html/unnamed-chunk-33-1.png)<!-- -->
 
 
 |lab_variable                  |    P| Chi-Square| d.f.|
@@ -338,9 +327,9 @@ Logged values
 
 |names                                                    |placebo   |active    |effect                        |    p|
 |:--------------------------------------------------------|:---------|:---------|:-----------------------------|----:|
-|tdl_ferritin_bl_cat_2 < 30                               |0.5 ± 1.1 |0.2 ± 0.5 |0.42 (0.18 to 1.01); p = 0.05 | 0.08|
-|tdl_ferritin_bl_cat_2 30 - 100                           |0.4 ± 0.9 |0.7 ± 1.3 |1.52 (0.71 to 3.29); p = 0.28 | 0.08|
-|tdl_ferritin_bl_cat_2 >= 100                             |0.5 ± 0.8 |0.5 ± 0.9 |1.04 (0.59 to 1.84); p = 0.89 | 0.08|
+|tdl_ferritin_bl_cat_2 < 30                               |0.5 ± 1.1 |0.2 ± 0.5 |0.46 (0.19 to 1.11); p = 0.08 | 0.08|
+|tdl_ferritin_bl_cat_2 30 - 100                           |0.4 ± 0.9 |0.7 ± 1.3 |1.55 (0.71 to 3.38); p = 0.27 | 0.08|
+|tdl_ferritin_bl_cat_2 >= 100                             |0.5 ± 0.8 |0.5 ± 0.9 |1.08 (0.6 to 1.93); p = 0.8   | 0.08|
 |tdl_tsat_bl_cat < 20                                     |0.5 ± 1   |0.5 ± 1   |0.92 (0.57 to 1.47); p = 0.72 | 0.31|
 |tdl_tsat_bl_cat >= 20                                    |0.3 ± 0.7 |0.4 ± 0.7 |1.58 (0.58 to 4.26); p = 0.37 | 0.31|
 |fer_tsat_or tdl_ferritin_bl < 100 OR tdl_tsat_bl < 20    |0.5 ± 1   |0.5 ± 1   |0.95 (0.6 to 1.5); p = 0.81   | 0.41|
@@ -352,7 +341,7 @@ Logged values
 
 Predicted outcomes from logistic regression models of the outcome with an interaction between treatment arm and a given baseline lab value (modeled continuously with splines).
 
-![](report_02_files/figure-html/unnamed-chunk-42-1.png)<!-- -->
+![](report_02_files/figure-html/unnamed-chunk-36-1.png)<!-- -->
 
 
 |lab_variable          |    P| Chi-Square| d.f.|
@@ -365,7 +354,7 @@ Predicted outcomes from logistic regression models of the outcome with an intera
 
 Logged values
 
-![](report_02_files/figure-html/unnamed-chunk-44-1.png)<!-- -->
+![](report_02_files/figure-html/unnamed-chunk-38-1.png)<!-- -->
 
 
 |lab_variable                  |    P| Chi-Square| d.f.|
@@ -384,21 +373,21 @@ Logged values
 
 |names                                                    |placebo   |active    |effect                        |    p|
 |:--------------------------------------------------------|:---------|:---------|:-----------------------------|----:|
-|tdl_ferritin_bl_cat_2 < 30                               |0.5 ± 1.1 |0.2 ± 0.5 |0.56 (0.25 to 1.26); p = 0.16 | 0.25|
-|tdl_ferritin_bl_cat_2 30 - 100                           |0.4 ± 0.9 |0.7 ± 1.3 |1.51 (0.7 to 3.25); p = 0.3   | 0.25|
-|tdl_ferritin_bl_cat_2 >= 100                             |0.5 ± 0.8 |0.5 ± 0.9 |0.75 (0.43 to 1.31); p = 0.31 | 0.25|
-|tdl_tsat_bl_cat < 20                                     |0.5 ± 1   |0.5 ± 1   |0.76 (0.47 to 1.21); p = 0.25 | 0.10|
-|tdl_tsat_bl_cat >= 20                                    |0.3 ± 0.7 |0.4 ± 0.7 |1.79 (0.69 to 4.63); p = 0.23 | 0.10|
-|fer_tsat_or tdl_ferritin_bl < 100 OR tdl_tsat_bl < 20    |0.5 ± 1   |0.5 ± 1   |0.79 (0.5 to 1.25); p = 0.32  | 0.22|
-|fer_tsat_or tdl_ferritin_bl >= 100 and tdl_tsat_bl >= 20 |0.3 ± 0.6 |0.4 ± 0.8 |1.64 (0.56 to 4.79); p = 0.37 | 0.22|
-|fer_tsat_and tdl_ferritin_bl < 100 AND tdl_tsat_bl < 20  |0.5 ± 1   |0.4 ± 0.9 |0.95 (0.51 to 1.77); p = 0.87 | 0.73|
-|fer_tsat_and tdl_ferritin_bl >= 100 or tdl_tsat_bl >= 20 |0.5 ± 0.8 |0.5 ± 0.9 |0.82 (0.46 to 1.45); p = 0.49 | 0.73|
+|tdl_ferritin_bl_cat_2 < 30                               |0.5 ± 1.1 |0.2 ± 0.5 |0.61 (0.26 to 1.4); p = 0.24  | 0.24|
+|tdl_ferritin_bl_cat_2 30 - 100                           |0.4 ± 0.9 |0.7 ± 1.3 |1.5 (0.68 to 3.29); p = 0.31  | 0.24|
+|tdl_ferritin_bl_cat_2 >= 100                             |0.5 ± 0.8 |0.5 ± 0.9 |0.76 (0.43 to 1.35); p = 0.34 | 0.24|
+|tdl_tsat_bl_cat < 20                                     |0.5 ± 1   |0.5 ± 1   |0.8 (0.5 to 1.27); p = 0.34   | 0.20|
+|tdl_tsat_bl_cat >= 20                                    |0.3 ± 0.7 |0.4 ± 0.7 |1.55 (0.61 to 3.94); p = 0.35 | 0.20|
+|fer_tsat_or tdl_ferritin_bl < 100 OR tdl_tsat_bl < 20    |0.5 ± 1   |0.5 ± 1   |0.84 (0.53 to 1.31); p = 0.44 | 0.36|
+|fer_tsat_or tdl_ferritin_bl >= 100 and tdl_tsat_bl >= 20 |0.3 ± 0.6 |0.4 ± 0.8 |1.41 (0.5 to 3.96); p = 0.52  | 0.36|
+|fer_tsat_and tdl_ferritin_bl < 100 AND tdl_tsat_bl < 20  |0.5 ± 1   |0.4 ± 0.9 |0.94 (0.51 to 1.73); p = 0.83 | 0.82|
+|fer_tsat_and tdl_ferritin_bl >= 100 or tdl_tsat_bl >= 20 |0.5 ± 0.8 |0.5 ± 0.9 |0.85 (0.48 to 1.49); p = 0.57 | 0.82|
 
 #### New models
 
 Predicted outcomes from logistic regression models of the outcome with an interaction between treatment arm and a given baseline lab value (modeled continuously with splines).
 
-![](report_02_files/figure-html/unnamed-chunk-47-1.png)<!-- -->
+![](report_02_files/figure-html/unnamed-chunk-41-1.png)<!-- -->
 
 
 |lab_variable          |    P| Chi-Square| d.f.|
@@ -411,7 +400,7 @@ Predicted outcomes from logistic regression models of the outcome with an intera
 
 Logged values
 
-![](report_02_files/figure-html/unnamed-chunk-49-1.png)<!-- -->
+![](report_02_files/figure-html/unnamed-chunk-43-1.png)<!-- -->
 
 
 |lab_variable                  |    P| Chi-Square| d.f.|

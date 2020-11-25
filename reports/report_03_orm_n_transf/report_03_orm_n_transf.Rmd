@@ -41,25 +41,6 @@ output:
 ```
 
 
-```{r}
-
-  pull_ci <- function(model){
-    
-    library(broom)
-    x <- tidy(model) %>%
-      mutate(
-        ul = round(exp(estimate + (1.96 * std.error)), 2), 
-        ll = round(exp(estimate - (1.96 * std.error)), 2), 
-        est = round(exp(estimate), 2), 
-        effect = paste0(est, " (", ll, " to ", ul, ")", "; p = ", 
-                        round(p.value, 2))
-      )
-    
-    return(x$effect[x$term == "groupActive"])
-  }
-
-```
-
 # Re-analysis of the 2nd co-primary endpoint using the proportional odds model
 
 The second co-primary outcome in PREVENTT was the number of RBC transfusions in 30 days post-surgery, excluding large blood transfusions (>= 4 units). Spahn *et al*. reported a similar endpoint, which was the transfusion count by day 7, excluding "massive" transfusions (≥10 RBC transfusions per 24 h). 

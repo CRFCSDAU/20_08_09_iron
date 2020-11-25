@@ -6,15 +6,16 @@
   library(lubridate)
   library(rms)
   library(Hmisc)
+  library(readxl)
 
 # Data -------------------------------------------------------------------------
 
   data <- read_dta("data/PREVENTT Analysis Data 20191205 No Site Names.dta")
 
-  table(unlist(map(data, class))) # What class are the variables after import
-
 
 # Deal with labelled classes from Haven ----------------------------------------
+
+  # table(unlist(map(data, class))) # What class are the variables after import
 
   # Save labels
 
@@ -266,6 +267,35 @@
 
   data <- remove_empty(data)
 
+
+# Add phosphate data -----------------------------------------------------------
+
+  phos <- read_excel("data/preventtRandomNoLinkLW.xlsx", skip = 1) %>%
+    clean_names() %>%
+    rename(identifier = pat_id)
+
+  # length(phos$pat_id[phos$pat_id %in% data$identifier])
+  expect_equal(length(data$identifier), length(unique(data$identifier)))
+  expect_equal(length(phos$identifier), length(unique(phos$identifier)))
+  expect_equal(
+    length(phos$identifier[phos$identifier %in% data$identifier]),
+    length(phos$identifier)
+    )
+
+  k <- nrow(data)
+
+  data <- full_join(
+    data,
+    select(phos, identifier, phos_bl = baseline, phos_preop = pre_operative),
+    by = "identifier"
+  )
+
+  expect_equal(nrow(data), k)
+
+  data$phos_bl <- as.numeric(data$phos_bl)
+  data$phos_preop <- as.numeric(data$phos_preop)
+
+
 # Inspect data structure -------------------------------------------------------
 
   # names(data)
@@ -277,6 +307,6 @@
 # Save data --------------------------------------------------------------------
 
   save(data, label.list, file = "data/data.RData")
-  rm(list = ls())
+# rm(list = ls())
 # load("data.RData")
 

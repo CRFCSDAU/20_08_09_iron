@@ -1,6 +1,428 @@
 
+  select <- dplyr::select # Deals with conflict between dplyr and MASS with select
 
 # User defined functions ####
+
+# Report 1 ---------------------------------------------------------------------
+
+# Pull the active tx effect from a model with exponentiation ----
+  pull_ci <- function(model){
+
+    library(broom)
+    x <- tidy(model) %>%
+      mutate(
+        ul = round(exp(estimate + (1.96 * std.error)), 2),
+        ll = round(exp(estimate - (1.96 * std.error)), 2),
+        est = round(exp(estimate), 2),
+        effect = paste0(est, " (", ll, " to ", ul, ")", "; p = ",
+                        round(p.value, 2))
+      )
+
+    return(x$effect[x$term == "groupActive"])
+  }
+
+# Pull the active tx effect from a model without exponentiation ----
+
+  pull_ci_2 <- function(model){
+
+    library(broom)
+    x <- tidy(model) %>%
+      mutate(
+        ul = round(estimate + (1.96 * std.error), 2),
+        ll = round(estimate - (1.96 * std.error), 2),
+        est = round(estimate, 2),
+        effect = paste0(est, " (", ll, " to ", ul, ")", "; p = ",
+                        round(p.value, 2))
+      )
+
+    return(x$effect[x$term == "groupActive"])
+  }
+
+
+# Create results tables for subgroup analyses with log binomial models ----
+
+  pull_tab <- function(tab_1, out, col_, arm){
+    k <- levels(data[[out]])[2]
+    paste0(
+      tab_1[k, col_, arm],
+      "/",
+      sum(tab_1[, col_, arm]),
+      " (",
+      round(tab_1[k, col_, arm] / sum(tab_1[, col_, arm]), 2) * 100,
+      "%)"
+    )
+  }
+
+  sub_sum_1 <- function(var, out, ...){
+
+    if(length(levels(data[[var]])) == 2){
+
+      # Get the basic table of outcomes by arm by subgroup
+      tab_1 <- table(data[[out]], data[[var]], data[["group"]])
+
+      # Model based estimate in subgroup 1
+      form_1 <- as.formula(paste0(out, " ~ ", "group"))
+      dta <- data[data[[var]] == levels(data[[var]])[1], ]
+      m1 <- glm(form_1, data = dta, family = binomial(link = "log"),
+                start = c(-1, 0))
+
+      # Model based estimate in subgroup 2
+      dta <- data[data[[var]] == levels(data[[var]])[2], ]
+      m2 <- glm(form_1, data = dta, family = binomial(link = "log"),
+                start = c(-1, 0))
+
+      # LRT p-value for the interaction test
+      form_2 <- as.formula(
+        paste0(out, " ~ ", "group + ", var, " + ", "group * ", var)
+      )
+      m3 <- glm(form_2, data = data, family = binomial(link = "log"),
+                start = c(-1, 0, 0, 0))
+      pv <- drop1(m3, test = "LRT")[paste0("group:", var), "Pr(>Chi)"]
+
+      # Put everything into a dataframe
+      out <- data_frame(
+        names  = paste(var, levels(data[[var]])),
+        placebo = c(pull_tab(tab_1, out, 1, "Placebo"),
+                    pull_tab(tab_1, out, 2, "Placebo")),
+        active  = c(pull_tab(tab_1, out, 1, "Active"),
+                    pull_tab(tab_1, out, 2, "Active")),
+        effect = c(pull_ci(m1), pull_ci(m2)),
+        p = round(pv, 2)
+      )
+    }
+
+    if(length(levels(data[[var]])) == 3){
+
+      # Get the basic table of outcomes by arm by subgroup
+      tab_1 <- table(data[[out]], data[[var]], data[["group"]])
+
+      # Model based estimate in subgroup 1
+      form_1 <- as.formula(paste0(out, " ~ ", "group"))
+      dta <- data[data[[var]] == levels(data[[var]])[1], ]
+      m1 <- glm(form_1, data = dta, family = binomial(link = "log"),
+                start = c(-1, 0))
+
+      # Model based estimate in subgroup 2
+      dta <- data[data[[var]] == levels(data[[var]])[2], ]
+      m2 <- glm(form_1, data = dta, family = binomial(link = "log"),
+                start = c(-1, 0))
+
+      # Model based estimate in subgroup 3
+      dta <- data[data[[var]] == levels(data[[var]])[3], ]
+      m3 <- glm(form_1, data = dta, family = binomial(link = "log"),
+                start = c(-1, 0))
+
+      # LRT p-value for the interaction test
+      form_2 <- as.formula(
+        paste0(out, " ~ ", "group + ", var, " + ", "group * ", var)
+      )
+      m4 <- glm(form_2, data = data, family = binomial(link = "log"),
+                start = c(-1, 0, 0, 0, 0, 0))
+      pv <- drop1(m4, test = "LRT")[paste0("group:", var), "Pr(>Chi)"]
+
+      # Put everything into a dataframe
+      out <- data_frame(
+        names  = paste(var, levels(data[[var]])),
+        placebo = c(pull_tab(tab_1, out, 1, "Placebo"),
+                    pull_tab(tab_1, out, 2, "Placebo"),
+                    pull_tab(tab_1, out, 3, "Placebo")),
+        active  = c(pull_tab(tab_1, out, 1, "Active"),
+                    pull_tab(tab_1, out, 2, "Active"),
+                    pull_tab(tab_1, out, 3, "Active")),
+        effect = c(pull_ci(m1), pull_ci(m2), pull_ci(m3)),
+        p = round(pv, 2)
+      )
+    }
+
+    return(out)
+
+  }
+
+
+# Create results tables for subgroup analyses with neg binomial models ----
+
+  pull_means <- function(col_, arm, var){
+    tar <- data$group == arm & data[[var]] == levels(data[[var]])[col_]
+    summary.1(data[tar, ]["BT_30d_num"])
+  }
+
+  sub_sum_2 <- function(var, out, ...){
+
+    if(length(levels(data[[var]])) == 2){
+
+      # Model based estimate in subgroup 1
+      form_1 <- as.formula(paste0(out, " ~ ", "group + offset(log(obs_time_1))"))
+      dta <- data[data[[var]] == levels(data[[var]])[1], ]
+      m1 <- glm.nb(form_1, data = dta)
+
+      # Model based estimate in subgroup 2
+      dta <- data[data[[var]] == levels(data[[var]])[2], ]
+      m2 <- glm.nb(form_1, data = dta)
+
+      # LRT p-value for the interaction test
+      form_2 <- as.formula(
+        paste0(out, " ~ ", "group + ", var, " + ", "group * ", var,
+               " + offset(log(obs_time_1))")
+      )
+      m3 <- glm.nb(form_2, data = data)
+      pv <- drop1(m3, test = "LRT")[paste0("group:", var), "Pr(>Chi)"]
+
+      # Put everything into a dataframe
+      out <- data_frame(
+        names  = paste(var, levels(data[[var]])),
+        placebo = c(pull_means(1, "Placebo", var), pull_means(2, "Placebo", var)),
+        active  = c(pull_means(1, "Active",  var), pull_means(2, "Active",  var)),
+        effect = c(pull_ci(m1), pull_ci(m2)),
+        p = round(pv, 2)
+      )
+
+    }
+
+    if(length(levels(data[[var]])) == 3){
+
+      # Model based estimate in subgroup 1
+      form_1 <- as.formula(paste0(out, " ~ ", "group + offset(log(obs_time_1))"))
+      dta <- data[data[[var]] == levels(data[[var]])[1], ]
+      m1 <- glm.nb(form_1, data = dta)
+
+      # Model based estimate in subgroup 2
+      dta <- data[data[[var]] == levels(data[[var]])[2], ]
+      m2 <- glm.nb(form_1, data = dta)
+
+      # Model based estimate in subgroup 2
+      dta <- data[data[[var]] == levels(data[[var]])[3], ]
+      m3 <- glm.nb(form_1, data = dta)
+
+      # LRT p-value for the interaction test
+      form_2 <- as.formula(
+        paste0(out, " ~ ", "group + ", var, " + ", "group * ", var,
+               " + offset(log(obs_time_1))")
+      )
+      m4 <- glm.nb(form_2, data = data)
+      pv <- drop1(m4, test = "LRT")[paste0("group:", var), "Pr(>Chi)"]
+
+      # Put everything into a dataframe
+      out <- data_frame(
+        names  = paste(var, levels(data[[var]])),
+        placebo = c(pull_means(1, "Placebo", var),
+                    pull_means(2, "Placebo", var),
+                    pull_means(3, "Placebo", var)),
+        active  = c(pull_means(1, "Active",  var),
+                    pull_means(2, "Active",  var),
+                    pull_means(3, "Active",  var)),
+        effect = c(pull_ci(m1), pull_ci(m2), pull_ci(m3)),
+        p = round(pv, 2)
+      )
+
+    }
+
+    return(out)
+
+  }
+
+
+# Other data summary functions ----
+# To reproduce results from the main paper
+
+  means_sds <- function(var1, dat){
+
+    data <- dat
+
+    m_p <- mean(
+      data[[var1]][data$group == "Placebo"], na.rm = TRUE
+    ) %>% round(2)
+    m_i <- mean(
+      data[[var1]][data$group == "Active"], na.rm = TRUE
+    ) %>% round(2)
+    s_p <- sd(
+      data[[var1]][data$group == "Placebo"], na.rm = TRUE
+    ) %>% round(2)
+    s_i <- sd(
+      data[[var1]][data$group == "Active"], na.rm = TRUE
+    ) %>% round(2)
+
+    data_frame(
+      mean_sd = c(paste0(m_p, " (", s_p, ")"),
+                  paste0(m_i, " (", s_i, ")"))
+    ) %>%
+      t() %>%
+      as.data.frame() %>%
+      rename(Placebo = V1, Iron = V2)
+
+  }
+
+  med_iqr <- function(var1, dat){
+
+    data <- dat
+
+    m_p <- median(
+      data[[var1]][data$group == "Placebo"], na.rm = TRUE
+    ) %>% round(2)
+    m_i <- median(
+      data[[var1]][data$group == "Active"], na.rm = TRUE
+    ) %>% round(2)
+    ll_p <- quantile(
+      data[[var1]][data$group == "Placebo"], 0.25, na.rm = TRUE
+    ) %>% round(2)
+    ll_i <- quantile(
+      data[[var1]][data$group == "Active"], 0.25, na.rm = TRUE
+    ) %>% round(2)
+    ul_p <- quantile(
+      data[[var1]][data$group == "Placebo"], 0.75, na.rm = TRUE
+    ) %>% round(2)
+    ul_i <- quantile(
+      data[[var1]][data$group == "Active"], 0.75, na.rm = TRUE
+    ) %>% round(2)
+
+    data_frame(
+      median_iqr = c(paste0(m_p, " (", ll_p, " to ", ul_p, ")"),
+                     paste0(m_i, " (", ll_i, " to ", ul_i, ")"))
+    ) %>%
+      t() %>%
+      as.data.frame() %>%
+      rename(Placebo = V1, Iron = V2)
+
+  }
+
+  range_ <- function(var1, dat){
+
+    data <- dat
+
+    min_p <- min(
+      data[[var1]][data$group == "Placebo"], na.rm = TRUE
+    ) %>% round(2)
+    min_i <- min(
+      data[[var1]][data$group == "Active"], na.rm = TRUE
+    ) %>% round(2)
+    max_p <- max(
+      data[[var1]][data$group == "Placebo"], na.rm = TRUE
+    ) %>% round(2)
+    max_i <- max(
+      data[[var1]][data$group == "Active"], na.rm = TRUE
+    ) %>% round(2)
+
+
+    data_frame(
+      range = c(paste0(min_p, " to ", max_p),
+                paste0(min_i, " to ", max_i))
+    ) %>%
+      t() %>%
+      as.data.frame() %>%
+      rename(Placebo = V1, Iron = V2)
+
+  }
+
+  counts_pct <- function(var1, dat){
+
+    data <- dat
+
+    t1 <- table(data$group, data[[var1]])
+    a <- sum(t1[1, c(2:ncol(t1))])
+    b <- sum(t1[1, c(1:ncol(t1))])
+    c <- paste0(a, "/", b, " (", round(a/b * 100, 2), "%)")
+    e <- sum(t1[2, c(2:ncol(t1))])
+    f <- sum(t1[2, c(1:ncol(t1))])
+    g <- paste0(e, "/", f, " (", round(e/f * 100, 2), "%)")
+
+    data_frame(
+      pct = c(c, g)
+    ) %>%
+      t() %>%
+      as.data.frame() %>%
+      rename(Placebo = V1, Iron = V2)
+
+  }
+
+  total_units <- function(var1, dat){
+
+    data <- dat
+
+    t2 <- table(data$group, data[[var1]])
+    h <- sum(t2[1, ] * c(0:(ncol(t2)-1)))
+    i <- sum(t2[2, ] * c(0:(ncol(t2)-1)))
+
+    data_frame(
+      total_units  = as.character(c(h, i))
+    ) %>%
+      t() %>%
+      as.data.frame() %>%
+      rename(Placebo = V1, Iron = V2)
+
+  }
+
+
+# Report 2 ---------------------------------------------------------------------
+
+# Estimate logistic regression model taking a lab variable as a predictor ----
+
+  lrm_ <- function(out, var){
+    form_ <- as.formula(paste0(
+      out, " ~ group * rcs(", var,", 4) + rcs(age, 4)"
+    ))
+    m1 <- lrm(form_, data = data)
+    return(m1)
+  }
+
+# Plot predicted values ----
+  plot_int_lrm <- function(model, var, lims){
+    fac <- setNames(list(NA, NA), c(var, "group"))
+    ggplot(Predict(model, var, group, factors = fac)) +
+      coord_cartesian(ylim = lims) +
+      guides(color = FALSE)
+  }
+
+# Test interactions ----
+  test_int <- function(var, mod){
+
+    var <- label(data[[var]])
+    t1 <- anova(mod)[2, ] %>%
+      t() %>%
+      as.data.frame() %>%
+      mutate(lab_variable = var) %>%
+      select(lab_variable, P, everything())
+
+    t1[map_lgl(t1, is.numeric)] <- map( t1[map_lgl(t1, is.numeric)], round, 2)
+
+    return(t1)
+  }
+
+
+# Quasi Poison models with and without offsets ----
+
+  # With offset
+  quasip_1 <- function(out, var, offset){
+    form_ <- as.formula(paste0(
+      out, " ~ group * rcs(", var, ", 4) + rcs(age, 4) + offset(",
+      offset, ")"
+    ))
+    m1 <- Glm(form_, family = quasipoisson(), data = data)
+    return(m1)
+  }
+
+  # No offset
+  quasip_2 <- function(out, var){
+    form_ <- as.formula(paste0(
+      out, " ~ group * rcs(", var, ", 4) + rcs(age, 4)"
+    ))
+    m1 <- Glm(form_, family = quasipoisson(), data = data)
+    return(m1)
+  }
+
+  plot_int_qp <- function(model, var, lims){
+    fac <- setNames(list(NA, NA), c(var, "group"))
+    off <- setNames(list(NA), c("obs_time_1_log"))
+    ggplot(Predict(model, var, group, factors = fac, offset = off)) +
+      coord_cartesian(ylim = lims) +
+      guides(color = FALSE)
+  }
+
+
+# Others ----
+
+  inverse_logit <- function(x){
+    1 / (1 + exp(-x))
+  }
+
 
   simpleCap <- function(x) {
     out <- c()

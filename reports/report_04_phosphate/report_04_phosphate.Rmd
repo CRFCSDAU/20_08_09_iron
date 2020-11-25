@@ -1,0 +1,123 @@
+---
+title: ''
+author: ''
+date: ''
+output: 
+  html_document:
+    df_print: paged
+    keep_md: true
+  word_document:
+    reference_docx: style.1.docx
+---
+
+```{r setup, include = FALSE}
+
+  knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, 
+                        fig.width  = 6 * 1.67, fig.height = 6)
+
+  proj <- rprojroot::find_rstudio_root_file()
+  knitr::opts_knit$set(root.dir = proj)
+  
+  load(paste0(proj, "/data/data.RData"))
+  
+  source(paste0(proj, "/scripts/functions.R"))
+
+  # load("data/data.RData")
+  # 
+  # source("scripts/functions.R")
+  
+  library(logbin)
+  library(MASS)
+  library(descr)
+  library(tidyverse)
+  library(viridis)
+  library(knitr)
+  library(rms)
+  library(Hmisc)
+  library(sjPlot)
+  
+  select <- dplyr::select # Deals with conflict between dplyr and MASS with select
+
+```
+
+
+# Distribution of baseline and pre-op phosphate values by study arm
+
+```{r}
+
+  select(data, identifier, group, phos_bl, phos_preop) %>%
+    gather(time, phosphate, phos_bl, phos_preop) %>% 
+    mutate(time = factor(time, labels = c("Baseline", "Pre-op"))) %>%
+  ggplot(aes(x = group, y = phosphate, color = group)) +
+    geom_jitter(width = 0.1, height = 0) +
+    geom_boxplot(alpha = 0.5, outlier.alpha = 0) +
+    facet_wrap(~time) +
+    xlab("") +
+    ylab("Phosphate (unit)") +
+    scale_color_brewer(guide = FALSE, palette = "Set1") 
+
+```
+
+Logged values
+
+```{r}
+
+  select(data, identifier, group, phos_bl, phos_preop) %>%
+    gather(time, phosphate, phos_bl, phos_preop) %>% 
+    mutate(time = factor(time, labels = c("Baseline", "Pre-op"))) %>%
+  ggplot(aes(x = group, y = log(phosphate), color = group)) +
+    geom_jitter(width = 0.1, height = 0) +
+    geom_boxplot(alpha = 0.5, outlier.alpha = 0) +
+    facet_wrap(~time) +
+    xlab("") +
+    ylab("Phosphate (unit)") +
+    scale_color_brewer(guide = FALSE, palette = "Set1") 
+
+```
+
+```{r}
+
+  select(data, identifier, group, phos_bl, phos_preop) %>%
+    gather(time, phosphate, phos_bl, phos_preop) %>% 
+    mutate(time = factor(time, labels = c("Baseline", "Pre-op"))) %>%
+  ggplot(aes(fill = group, x = phosphate, color = group)) +
+    geom_density(alpha = 0.5, adjust = 0.8) +
+    geom_rug(alpha = 0.5) +
+    facet_wrap(~time, ncol = 1) +
+    ylab("") +
+    xlab("Phosphate (unit)") +
+    scale_color_brewer(guide = FALSE, palette = "Set1") +
+    scale_fill_brewer("", palette = "Set1")
+
+
+```
+
+Logged values
+
+```{r}
+
+  select(data, identifier, group, phos_bl, phos_preop) %>%
+    gather(time, phosphate, phos_bl, phos_preop) %>% 
+    mutate(time = factor(time, labels = c("Baseline", "Pre-op"))) %>%
+  ggplot(aes(fill = group, x = log(phosphate), color = group)) +
+    geom_density(alpha = 0.5, adjust = 0.8) +
+    geom_rug(alpha = 0.5) +
+    facet_wrap(~time, ncol = 1) +
+    ylab("") +
+    xlab("Phosphate (unit)") +
+    scale_color_brewer(guide = FALSE, palette = "Set1") +
+    scale_fill_brewer("", palette = "Set1")
+
+
+```
+
+
+# End matter
+
+```{r sysinfo}
+
+  DescTools::SysInfo()
+
+```
+
+
