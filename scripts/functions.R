@@ -13,7 +13,7 @@
       mutate(
         ul = round(exp(estimate + (1.96 * std.error)), 2),
         ll = round(exp(estimate - (1.96 * std.error)), 2),
-        est = round(exp(estimate), 2),
+        est = round(exp(estimate), 3),
         effect = paste0(est, " (", ll, " to ", ul, ")", "; p = ",
                         round(p.value, 2))
       )
@@ -416,8 +416,24 @@
       guides(color = FALSE)
   }
 
+# Report 4 ---------------------------------------------------------------------
+
+# anova lrt tests for effect of phosphate
+
+  phos_effect <- function(model, var){
+    anova(model) %>%
+      as.data.frame() %>%
+      slice(3) %>% mutate(var = var) %>%
+      select(var, everything()) %>%
+      mutate(across(where(is.numeric), round, 2))
+  }
+
 
 # Others ----
+
+  mc <- function(x){
+    scale(x, scale = FALSE)
+  }
 
   inverse_logit <- function(x){
     1 / (1 + exp(-x))
