@@ -1,5 +1,5 @@
 ---
-title: ''
+title: 'Phosphate analysis'
 author: ''
 date: ''
 output: 
@@ -40,35 +40,71 @@ output:
   
   select <- dplyr::select # Deals with conflict between dplyr and MASS with select
   
+```
+
+```{r}
+
+  levs <- c("0.7+ mmol/L", "< 0.7 mmol/L")
+
   data_itt <- filter(data, !is.na(primary_30d)) %>%
     arrange(identifier) %>%
-    mutate(phos_chg = phos_preop - phos_bl)
-  
-  dd <- datadist(data_itt); options(datadist = "dd")
+    mutate(
+      phos_chg_mmolL = phos_preop_mmolL - phos_bl_mmolL, 
+      phos_bl_07_mmolL = factor(ifelse(
+        phos_bl_mmolL <= 0.7, "< 0.7 mmol/L", "0.7+ mmol/L"
+        ), levels = levs),
+      phos_preop_07_mmolL = factor(ifelse(
+        phos_preop_mmolL <= 0.7, "< 0.7 mmol/L", "0.7+ mmol/L"
+        ), levels = levs)
+    )
 
+  dd <- datadist(data_itt); options(datadist = "dd")
 
 ```
 
+```{r}
+
+  # ggplot(data_itt, aes(phos_bl_mmolL, phos_bl_mgdl)) + geom_point()
+  # ggplot(data_itt, aes(phos_preop_mmolL, phos_preop_mgdl)) + geom_point()
+
+
+```
 
 ```{r}
   
-  t1 <- table(is.na(data_itt$phos_bl))
-  t2 <- table(is.na(data_itt$phos_preop))
-  t3 <- with(data_itt, table(is.na(phos_bl), is.na(phos_preop)))
+  t1 <- table(is.na(data_itt$phos_bl_mmolL))
+  t2 <- table(is.na(data_itt$phos_preop_mmolL))
+  t3 <- with(data_itt, table(is.na(phos_bl_mmolL), is.na(phos_preop_mmolL)))
   
 ```
 
 
+# Number of observations with phosphate values
 
 In the ITT sample (n = `r nrow(data_itt)`), phosphate (mmol/L) was measured in `r t1["FALSE"]` patients at baseline and `r t2["FALSE"]` patients prior to their operation but after the intervention was administered (`r t3[1]` patients had phosphate measured at both time points and `r t3[4]` had it measured at neither).  
+
+<br>
+<br>
+
+# Impact of iron on phosphate values
+
+Perhaps the most straightforward evidence of any effects of low phosphate (or lack thereof) are the main results of PREVENTT. Given that iron supplementation leads to substantial lowering of serum phosphate, but not to increased risk of adverse outcomes, it would be a stretch to conclude that lower serum phosphate was associated with increased risks (to say the least). 
+
+By comparing baseline vs pre-op values in the control and active arms (below), we can clearly see that serum phosphate levels did drop substantially following iron supplementation. 
+
+<br>
+<br>
+
+**Table: Distribution of serum phosphate measurement by study arm**
 
 ```{r}
 
   table.1.var <- data_itt %>%
-    mutate(log10_phos_bl = log10(phos_bl), 
-           log10_phos_preop = log10(phos_preop)) %>% 
-    select(arm = group, phos_bl, log10_phos_bl, phos_preop, log10_phos_preop, 
-           phos_chg) 
+    mutate(log10_phos_bl_mmolL = log10(phos_bl_mmolL), 
+           log10_phos_preop_mmolL = log10(phos_preop_mmolL)) %>% 
+    select(arm = group, phos_bl_mmolL, log10_phos_bl_mmolL, phos_bl_07_mmolL, 
+           phos_preop_mmolL, log10_phos_preop_mmolL, phos_preop_07_mmolL, 
+           phos_chg_mmolL) 
 
   
   # map(table.1.var, class)
@@ -76,9 +112,20 @@ In the ITT sample (n = `r nrow(data_itt)`), phosphate (mmol/L) was measured in `
   act <- filter(table.1.var, arm == "Active") %>% select(-arm)
   con <- filter(table.1.var, arm == "Placebo") %>% select(-arm)
 
+  vars <- c(
+    "Baseline phosphate (mmol/L)",
+    "Baseline phosphate (log10(mmol/L))",
+    "Low baseline phospate",
+    levels(data_itt$phos_bl_07_mmolL),
+    "Pre-op phosphate (mmol/L)",
+    "Pre-op phosphate (log10(mmol/L))",
+    "Low pre-op phospate",
+    levels(data_itt$phos_preop_07_mmolL),
+    "Change in phosphate (mmol/L)"
+  )
   
-  data_frame("Variable" = name.1(select(table.1.var, -arm)),
-             "Observations" = as.numeric(n.miss(select(table.1.var, -arm))),
+  data_frame("Variable" =  vars,
+             "Observations" = n.miss(select(table.1.var, -arm)),
              "Total" = summary.2(select(table.1.var, -arm)),
              "Control" = summary.2(con),
              "Active" = summary.2(act)) %>% 
@@ -87,119 +134,219 @@ In the ITT sample (n = `r nrow(data_itt)`), phosphate (mmol/L) was measured in `
   rm(act, con)
   
 ```
+*Note: values are medians[IQR] or n(%)*
 
-
-# Impact of iron on phosphate values. 
-
-In the plot below, we can clearly see the average drop in phosphate levels in the iron arm. 
+<br>
+<br>
 
 **Figure: Distributions of baseline and pre-operative phosphate values (mmol/L) by study arm.**
 
 ```{r}
 
-  select(data_itt, identifier, group, phos_bl, phos_preop) %>%
-    gather(time, phosphate, phos_bl, phos_preop) %>% 
+  select(data_itt, identifier, group, phos_bl_mmolL, phos_preop_mmolL) %>%
+    gather(time, phosphate, phos_bl_mmolL, phos_preop_mmolL) %>% 
     mutate(time = factor(time, labels = c("Baseline", "Pre-op"))) %>%
   ggplot(aes(x = time, y = phosphate)) +
-    # geom_jitter(width = 0.1, height = 0) +
-    geom_violin(aes(group = time), width = 0.3, color = "grey90", fill = "grey90") +
-    geom_point(position = position_jitter(width = 0.05, height = 0, seed = 12)) +
+    geom_hline(yintercept = 0.7, color = "black", linetype = "dashed") +
+    geom_violin(aes(group = time), width = 0.3, color = "grey90", 
+                fill = "grey90") +
+    geom_point(position = position_jitter(width = 0.05, height = 0,
+                                          seed = 12)) +
     geom_line(aes(group = identifier),
-              alpha = 0.05, position = position_jitter(width = 0.05, height = 0, seed = 12)) +
-    geom_smooth(aes(x = as.numeric(time), y = phosphate), method = "lm", se = FALSE) +
+              alpha = 0.05, position = position_jitter(width = 0.05, height = 0,
+                                                       seed = 12)) +
+    geom_smooth(aes(x = as.numeric(time), y = phosphate), method = "lm",
+                se = FALSE) +
     # geom_boxplot(alpha = 0.5, outlier.alpha = 0) +
     facet_wrap(~group) +
     xlab("") +
-    ylab("Phosphate (mmol/L)") +
+    ylab("Serum phosphate (mmol/L)") +
     scale_color_brewer(guide = FALSE, palette = "Set1") +
     theme_minimal()
 
 ```
+<br>
+<br>
+
+```{r}
+
+  m1 <- lm(phos_preop_mmolL ~ group + mc(phos_bl_mmolL), data = data_itt)
+  m2 <- glm(phos_preop_07_mmolL ~ group + mc(phos_bl_mmolL), data = data_itt, 
+            family = binomial())
+```
+
+Pre-operative phosphate levels were 0.21 mmol/L lower in the iron arm vs the placebo arm (`r pull_ci_2(m1)`); meaning of course that the The odds of having a low serum phosphate (< 0.7 mmol/L) was higher in the active arm (OR `r pull_ci(m2)`). 
+
+<br>
+<br>
 
 **Table: Effect of iron on phosphate levels (mmol/L) estimated by linear regression with adjustment for baseline phosphate.**
 
 ```{r}
 
-  m1 <- lm(phos_preop ~ group + mc(phos_bl), data = data_itt)
-
   tab_model(m1)
 
 ```
 
-Pre-operative phosphate levels were 1.95 mmol/L lower in the iron arm vs the placebo arm (95%CI -2.56 to -1.35). 
+<br>
+<br>
 
+**Table: Effect of iron on odds of low phosphate levels (< 0.7 mmol/L) estimated by logistic regression with adjustment for baseline phosphate.**
+
+```{r}
+
+  tab_model(m2)
+
+```
+
+<br>
+<br>
 
 # Associations between phosphate levels and outcomes
 
-## HTE by phosphate
+The advantage of the above reasoning (that there is unlikely to be a deleterious effect of low phosphate given there wasn't a deleterious effect of iron supplementation) is that we know that observed associations between study arm and outcomes are unbiased (i.e. not confounded) due to the randomization. This assumption doesn't necessarily hold if we look at associations between observed phosphate values and outcome, since there very well could be additional factors confounding those associations. Nonetheless, it's still probably worth looking at how phosphate levels are associated with outcomes. 
 
-### First co-primary outcome
+To help understand how phosphate levels might be associated with outcomes, we estimated those associations with the appropriate generalized linear model (depending on the outcome) that includes an interaction between study arm and phosphate levels, where the latter were modeled with restricted cubic splines (4 knots) to capture any non-linearities. Using these models, we can observe the arm specific predicted outcomes as a function of serum phosphate. Finally, we considered three different phosphate measures: baseline, pre-op, and the change between baseline and pre-op. 
+
+<br>
+<br>
+
+### First co-primary outcome (death or BT in the first 30 days)
+
+In the plots below, the dashed horizontal line reflects the marginal probability of the outcome in that analytic sample. The LRT p-value is a likelihood ratio test of the effect of phosphate. The red and blue lines reflect the arm-specific, non-linear associations between phosphate and the outcome, while the shaded areas reflect 95% CIs for those predicted outcomes. The underlying model for the first co-primary outcome was logistic regression. 
 
 ```{r}
 
-  m3 <- orm(primary_30d ~ group * rcs(phos_bl, 4), data = data_itt)
-  m4 <- orm(primary_30d ~ group * rcs(phos_preop, 4), data = data_itt)
-  m5 <- orm(primary_30d ~ group * rcs(phos_chg, 4), data = data_itt)
-
+  m3 <- lrm(primary_30d ~ group * rcs(phos_bl_mmolL, 4), data = data_itt)
+  m4 <- lrm(primary_30d ~ group * rcs(phos_preop_mmolL, 4), data = data_itt)
+  m5 <- lrm(primary_30d ~ group * rcs(phos_chg_mmolL, 4), data = data_itt)
 
 ```
 
-
 ```{r}
 
-  g1 <- ggplot(Predict(m3, phos_bl, group)) +
-    ylab("logit(primary_30d)") +
-    xlab("Baseline phosphate (mmol/L)") +
-    scale_color_brewer(guide = FALSE, palette = "Set1") +
-    coord_cartesian(ylim = c(-3, 2)) +
-    theme_minimal() +
-    theme(panel.grid.minor = element_blank())
-
-  g2 <- ggplot(Predict(m4, phos_preop, group)) +
-    ylab("") +
-    xlab("Pre-op phosphate (mmol/L)") +
-    scale_color_brewer(guide = FALSE, palette = "Set1") +
-    coord_cartesian(ylim = c(-3, 2)) +
-    theme_minimal() +
-    theme(panel.grid.minor = element_blank())
-
-  g3 <- ggplot(Predict(m5, phos_chg, group)) +
-    ylab("") +
-    xlab("Change in phosphate (mmol/L)") +
-    scale_color_brewer("", palette = "Set1") +
-    coord_cartesian(ylim = c(-3, 2)) +
-    theme_minimal() +
-    theme(panel.grid.minor = element_blank())
-  
-  g1 | g2 | g3
-
-  
-
-```
-
-**LRTs for phosphate effects on the first co-primary outcome**
-
-```{r}
-
-  bind_rows(
+  tests <- bind_rows(
     phos_effect(m3, "Baseline phosphate (and higher order factors)"), 
     phos_effect(m4, "Pre-op phosphate (and higher order factors)"), 
     phos_effect(m5, "Change in phosphate (and higher order factors)")
-  ) %>%
-  kable()
+  ) 
 
 ```
-### Second co-primary outcome
+
 
 ```{r}
 
-  m6 <- Glm(BT_30d_num ~ group * rcs(phos_bl, 4) + offset(obs_time_1_log), 
-             family = quasipoisson(), data = data_itt)
-  m7 <- Glm(BT_30d_num ~ group * rcs(phos_preop, 4) + offset(obs_time_1_log), 
-             family = quasipoisson(), data = data_itt)
-  m8 <- Glm(BT_30d_num ~ group * rcs(phos_chg, 4) + offset(obs_time_1_log), 
-             family = quasipoisson(), data = data_itt)
+  t1 <- with(filter(data_itt, !is.na(phos_bl_mmolL)), table(primary_30d))
 
+  g1 <- ggplot(Predict(m3, phos_bl_mmolL, group)) +
+    ylab("Proportion with BT or death in 30 days") +
+    xlab("Baseline phosphate (mmol/L)") +
+    scale_color_brewer("", palette = "Set1") +
+    coord_cartesian(ylim = c(-3, 2), xlim = c(0.5, 2.5)) +
+    theme_minimal() +
+    theme(panel.grid.minor = element_blank(), 
+          aspect.ratio = 1, 
+          legend.position = "top") +
+    scale_y_continuous(trans = inverse_logit_brks_trans) +
+    geom_hline(yintercept = logit_trans(t1[2]/sum(t1)), linetype = "dashed") +
+    ggtitle("", subtitle = paste0("n = ", sum(t1), "; LRT p = ", tests$P[1]))
+
+  
+  t2 <- with(filter(data_itt, !is.na(phos_preop_mmolL)), table(primary_30d))
+
+  g2 <- ggplot(Predict(m4, phos_preop_mmolL, group)) +
+    ylab("") +
+    xlab("Pre-op phosphate (mmol/L)") +
+    scale_color_brewer(guide = FALSE, palette = "Set1") +
+    coord_cartesian(ylim = c(-3, 2), xlim = c(0.5, 2.5)) +
+    theme_minimal() +
+    theme(panel.grid.minor = element_blank(), 
+          aspect.ratio = 1, 
+          axis.text.y = element_blank()) +
+    scale_y_continuous(trans = inverse_logit_brks_trans) +
+    geom_hline(yintercept = logit_trans(t2[2]/sum(t2)), linetype = "dashed") +
+    ggtitle("", subtitle = paste0("n = ", sum(t2), "; LRT p = ", tests$P[2]))
+
+  
+  t3 <- with(filter(data_itt, !is.na(phos_chg_mmolL)), table(primary_30d))
+
+  g3 <- ggplot(Predict(m5, phos_chg_mmolL, group)) +
+    ylab("") +
+    xlab("Change in phosphate (mmol/L)") +
+    scale_color_brewer(guide = FALSE, palette = "Set1") +
+    coord_cartesian(ylim = c(-3, 2)) +
+    theme_minimal() +
+    theme(panel.grid.minor = element_blank(), 
+          aspect.ratio = 1, 
+          axis.text.y = element_blank()) +
+    scale_y_continuous(trans = inverse_logit_brks_trans) +
+    geom_hline(yintercept = logit_trans(t3[2]/sum(t3)), linetype = "dashed")  +
+    ggtitle("", subtitle = paste0("n = ", sum(t3), "; LRT p = ", tests$P[3]))
+
+  g1 | g2 | g3
+
+```
+
+```{r}
+
+  # Does this scale tansform make sense?
+
+  # g1 <- ggplot(Predict(m3, phos_bl_mmolL, group)) +
+  #   ylab("Proportion with BT or death in 30 days") +
+  #   xlab("Baseline phosphate (mmol/L)") +
+  #   scale_color_brewer("", palette = "Set1") +
+  #   coord_cartesian(ylim = c(-3, 2), xlim = c(0.5, 2.5)) +
+  #   theme_minimal() +
+  #   theme(panel.grid.minor = element_blank(), 
+  #         aspect.ratio = 1, 
+  #         legend.position = "top") +
+  #   scale_y_continuous(trans = inverse_logit_brks_trans) +
+  #   ggtitle("", subtitle = paste0("n = ", sum(t1), "; LRT p = ", tests$P[1]))
+  # 
+  # g2 <- ggplot(Predict(m3, phos_bl_mmolL, group)) +
+  #   ylab("Proportion with BT or death in 30 days") +
+  #   xlab("Baseline phosphate (mmol/L)") +
+  #   scale_color_brewer("", palette = "Set1") +
+  #   coord_cartesian(ylim = c(-3, 2), xlim = c(0.5, 2.5)) +
+  #   theme_minimal() +
+  #   theme(panel.grid.minor = element_blank(), 
+  #         aspect.ratio = 1, 
+  #         legend.position = "top") +
+  #   ggtitle("", subtitle = paste0("n = ", sum(t1), "; LRT p = ", tests$P[1]))
+  # 
+  # g1 + g2
+  
+  
+```
+
+
+
+### Second co-primary outcome (number of BTs in the first 30 days)
+
+Modeled with quasi-Poisson regression. 
+
+```{r}
+
+  m6 <- Glm(
+    BT_30d_num ~ group * rcs(mc(phos_bl_mmolL), 4) + offset(obs_time_1_log),
+    family = quasipoisson(), data = data_itt
+    )
+
+  m7 <- Glm(
+    BT_30d_num ~ group * rcs(mc(phos_preop_mmolL), 4) + offset(obs_time_1_log), 
+    family = quasipoisson(), data = data_itt
+    )
+  
+  m8 <- Glm(
+    BT_30d_num ~ group * rcs(mc(phos_chg_mmolL), 4) + offset(obs_time_1_log), 
+    family = quasipoisson(), data = data_itt
+    )
+  
+  tests <- bind_rows(
+    phos_effect(m6, "Baseline phosphate (and higher order factors)"), 
+    phos_effect(m7, "Pre-op phosphate (and higher order factors)"), 
+    phos_effect(m8, "Change in phosphate (and higher order factors)")
+  ) 
 
 ```
 
@@ -208,52 +355,324 @@ Pre-operative phosphate levels were 1.95 mmol/L lower in the iron arm vs the pla
 
   off <- setNames(list(NA), c("obs_time_1_log"))
 
-  g1 <- ggplot(Predict(m6, phos_bl, group, offset = off)) +
-    ylab("linear predictor(BT_30d_num)") +
+  mn1 <- with(filter(data_itt, !is.na(phos_bl_mmolL)), mean(BT_30d_num)) / 30
+  n1 <- nrow(filter(data_itt, !is.na(phos_bl_mmolL)))
+  g1 <- ggplot(Predict(m6, phos_bl_mmolL, group, offset = off)) +
+    ylab("log(Number of BTs/day)") +
     xlab("Baseline phosphate (mmol/L)") +
     scale_color_brewer(guide = FALSE, palette = "Set1") +
-  #  coord_cartesian(ylim = c(-7, -3)) +
+    coord_cartesian(ylim = c(-7, -3), xlim = c(0.5, 2.5)) +
     theme_minimal() +
-    theme(panel.grid.minor = element_blank())
+    theme(panel.grid.minor = element_blank(), 
+          aspect.ratio = 1) +
+    ggtitle("", subtitle = paste0("n = ", n1, "; LRT p = ", tests$P[1])) 
 
-  g2 <- ggplot(Predict(m7, phos_preop, group, offset = off)) +
+  mn2 <- with(filter(data_itt, !is.na(phos_preop_mmolL)), mean(BT_30d_num)) / 30
+  n2 <- nrow(filter(data_itt, !is.na(phos_preop_mmolL)))
+  g2 <- ggplot(Predict(m7, phos_preop_mmolL, group, offset = off)) +
     ylab("") +
     xlab("Pre-op phosphate (mmol/L)") +
     scale_color_brewer(guide = FALSE, palette = "Set1") +
-   # coord_cartesian(ylim = c(-7, -3)) +
+    coord_cartesian(ylim = c(-7, -3), xlim = c(0.5, 2.5)) +
     theme_minimal() +
-    theme(panel.grid.minor = element_blank())
+    theme(panel.grid.minor = element_blank(), 
+          aspect.ratio = 1, 
+          axis.text.y = element_blank()) +
+    geom_hline(yintercept = mn2, linetype = "dashed")  +
+    ggtitle("", subtitle = paste0("n = ", n2, "; LRT p = ", tests$P[2]))
 
-  g3 <- ggplot(Predict(m8, phos_chg, group, offset = off)) +
+  mn3 <- with(filter(data_itt, !is.na(phos_chg_mmolL)), mean(BT_30d_num)) / 30
+  n3 <- nrow(filter(data_itt, !is.na(phos_chg_mmolL)))
+  g3 <- ggplot(Predict(m8, phos_chg_mmolL, group, offset = off)) +
     ylab("") +
     xlab("Change in phosphate (mmol/L)") +
     scale_color_brewer("", palette = "Set1") +
-  #  coord_cartesian(ylim = c(-7, -3)) +
+    coord_cartesian(ylim = c(-7, -3)) +
     theme_minimal() +
-    theme(panel.grid.minor = element_blank())
+    theme(panel.grid.minor = element_blank(), 
+          aspect.ratio = 1, 
+          axis.text.y = element_blank()) +
+    geom_hline(yintercept = mn3, linetype = "dashed")  +
+    ggtitle("", subtitle = paste0("n = ", n3, "; LRT p = ", tests$P[3]))
   
   g1 | g2 | g3
-
   
-
 ```
 
-**LRTs for phosphate effects on the second co-primary outcome**
+### Length of hospital stay
+
+Modelled with linear regression on log-transformed hospital length of stay. 
 
 ```{r}
 
-  bind_rows(
-    phos_effect(m6, "Baseline phosphate (and higher order factors)"), 
-    phos_effect(m7, "Pre-op phosphate (and higher order factors)"), 
-    phos_effect(m8, "Change in phosphate (and higher order factors)")
-  ) %>%
-  kable()
+# hist(log(data_itt$hosp_stay))
 
 ```
 
-## Intrumental variable
+```{r}
+
+  m9 <- ols(
+    log(hosp_stay) ~ group * rcs(mc(phos_bl_mmolL), 4),
+    data = data_itt
+    )
+
+  m10 <- ols(
+    log(hosp_stay) ~ group * rcs(mc(phos_preop_mmolL), 4), 
+    data = data_itt
+    )
+  
+  m11 <- ols(
+    log(hosp_stay) ~ group * rcs(mc(phos_chg_mmolL), 4),
+    data = data_itt
+    )
+  
+  tests <- bind_rows(
+    phos_effect(m9, "Baseline phosphate (and higher order factors)"), 
+    phos_effect(m10, "Pre-op phosphate (and higher order factors)"), 
+    phos_effect(m11, "Change in phosphate (and higher order factors)")
+  ) 
+
+```
+
+```{r}
+
+  off <- setNames(list(NA), c("obs_time_1_log"))
+
+  mn1 <- with(
+    filter(data_itt, !is.na(phos_bl_mmolL)), 
+    mean(log(hosp_stay), na.rm = TRUE)
+    )
+  n1 <- nrow(filter(data_itt, !is.na(phos_bl_mmolL) & !is.na(hosp_stay)))
+
+  g1 <- ggplot(Predict(m9, phos_bl_mmolL, group)) +
+    ylab("log(hospital length of stay (days))") +
+    xlab("Baseline phosphate (mmol/L)") +
+    scale_color_brewer(guide = FALSE, palette = "Set1") +
+    coord_cartesian(ylim = c(1, 3), xlim = c(0.5, 2.5)) +
+    theme_minimal() +
+    theme(panel.grid.minor = element_blank(), 
+          aspect.ratio = 1) +
+    geom_hline(yintercept = mn1, linetype = "dashed")  +
+    ggtitle("", subtitle = paste0("n = ", n1, "; LRT p = ", tests$P[1])) 
+
+  mn2 <- with(
+    filter(data_itt, !is.na(phos_preop_mmolL)), 
+    mean(log(hosp_stay), na.rm = TRUE)
+    )
+  n2 <- nrow(filter(data_itt, !is.na(phos_preop_mmolL) & !is.na(hosp_stay)))
+  g2 <- ggplot(Predict(m10, phos_preop_mmolL, group)) +
+    ylab("") +
+    xlab("Pre-op phosphate (mmol/L)") +
+    scale_color_brewer(guide = FALSE, palette = "Set1") +
+    coord_cartesian(ylim = c(1, 3), xlim = c(0.5, 2.5)) +
+    theme_minimal() +
+    theme(panel.grid.minor = element_blank(), 
+          aspect.ratio = 1, 
+          axis.text.y = element_blank()) +
+    geom_hline(yintercept = mn2, linetype = "dashed")  +
+    ggtitle("", subtitle = paste0("n = ", n2, "; LRT p = ", tests$P[2]))
+
+  mn3 <- with(
+    filter(data_itt, !is.na(phos_chg_mmolL)), 
+    mean(log(hosp_stay), na.rm = TRUE)
+    )
+  n3 <- nrow(filter(data_itt, !is.na(phos_chg_mmolL) & !is.na(hosp_stay)))
+  g3 <- ggplot(Predict(m11, phos_chg_mmolL, group)) +
+    ylab("") +
+    xlab("Change in phosphate (mmol/L)") +
+    scale_color_brewer("", palette = "Set1") +
+    coord_cartesian(ylim = c(1, 3)) +
+    theme_minimal() +
+    theme(panel.grid.minor = element_blank(), 
+          aspect.ratio = 1, 
+          axis.text.y = element_blank()) +
+    geom_hline(yintercept = mn3, linetype = "dashed")  +
+    ggtitle("", subtitle = paste0("n = ", n3, "; LRT p = ", tests$P[3]))
+  
+  g1 | g2 | g3
+  
+```
+
+### Length of ITU stay
+
+Modeled with quasi-Poisson regression. 
+
+```{r}
+
+# hist(log(data_itt$itu_stay))
+# hist(data_itt$itu_stay)
+
+```
+
+```{r}
+
+  m12 <- Glm(
+    itu_stay ~ group * rcs(mc(phos_bl_mmolL), 4),
+    family = quasipoisson(), data = data_itt
+    )
+
+  m13 <- Glm(
+    itu_stay ~ group * rcs(mc(phos_preop_mmolL), 4), 
+    family = quasipoisson(), data = data_itt
+    )
+  
+  m14 <- Glm(
+    itu_stay ~ group * rcs(mc(phos_chg_mmolL), 4), 
+    family = quasipoisson(), data = data_itt
+    )
+  
+  tests <- bind_rows(
+    phos_effect(m12, "Baseline phosphate (and higher order factors)"), 
+    phos_effect(m13, "Pre-op phosphate (and higher order factors)"), 
+    phos_effect(m14, "Change in phosphate (and higher order factors)")
+  ) 
+
+```
 
 
+```{r}
+
+
+  mn1 <- with(
+    filter(data_itt, !is.na(phos_bl_mmolL)), 
+    log(mean(itu_stay, na.rm = TRUE))
+    )
+  n1 <- nrow(filter(data_itt, !is.na(phos_bl_mmolL) & !is.na(itu_stay)))
+  g1 <- ggplot(Predict(m12, phos_bl_mmolL, group)) +
+    ylab("log(ITU stay)") +
+    xlab("Baseline phosphate (mmol/L)") +
+    scale_color_brewer(guide = FALSE, palette = "Set1") +
+    coord_cartesian(ylim = c(-2, 1.5), xlim = c(0.5, 2.5)) +
+    theme_minimal() +
+    theme(panel.grid.minor = element_blank(), 
+          aspect.ratio = 1) +
+    geom_hline(yintercept = mn1, linetype = "dashed")  +
+    ggtitle("", subtitle = paste0("n = ", n1, "; LRT p = ", tests$P[1])) 
+
+  mn2 <- with(
+    filter(data_itt, !is.na(phos_preop_mmolL)), 
+    log(mean(itu_stay, na.rm = TRUE))
+         ) 
+  n2 <- nrow(filter(data_itt, !is.na(phos_preop_mmolL) & !is.na(itu_stay)))
+  g2 <- ggplot(Predict(m13, phos_preop_mmolL, group)) +
+    ylab("") +
+    xlab("Pre-op phosphate (mmol/L)") +
+    scale_color_brewer(guide = FALSE, palette = "Set1") +
+    coord_cartesian(ylim = c(-2, 1.5), xlim = c(0.5, 2.5)) +
+    theme_minimal() +
+    theme(panel.grid.minor = element_blank(), 
+          aspect.ratio = 1, 
+          axis.text.y = element_blank()) +
+    geom_hline(yintercept = mn2, linetype = "dashed")  +
+    ggtitle("", subtitle = paste0("n = ", n2, "; LRT p = ", tests$P[2]))
+
+  mn3 <- with(
+    filter(data_itt, !is.na(phos_chg_mmolL)), 
+    log(mean(itu_stay, na.rm = TRUE))
+    ) 
+  n3 <- nrow(filter(data_itt, !is.na(phos_chg_mmolL) & !is.na(itu_stay)))
+  g3 <- ggplot(Predict(m14, phos_chg_mmolL, group)) +
+    ylab("") +
+    xlab("Change in phosphate (mmol/L)") +
+    scale_color_brewer("", palette = "Set1") +
+    coord_cartesian(ylim = c(-2, 1.5)) +
+    theme_minimal() +
+    theme(panel.grid.minor = element_blank(), 
+          aspect.ratio = 1, 
+          axis.text.y = element_blank()) +
+    geom_hline(yintercept = mn3, linetype = "dashed")  +
+    ggtitle("", subtitle = paste0("n = ", n3, "; LRT p = ", tests$P[3]))
+  
+  g1 | g2 | g3
+  
+```
+
+### Postoperative complications (grade 3+)
+
+Modeled with logistic regression
+
+```{r}
+
+  m15 <- lrm(post_op_comp3 ~ group * rcs(phos_bl_mmolL, 4), data = data_itt)
+  m16 <- lrm(post_op_comp3 ~ group * rcs(phos_preop_mmolL, 4), data = data_itt)
+  m17 <- lrm(post_op_comp3 ~ group * rcs(phos_chg_mmolL, 4), data = data_itt)
+
+```
+
+```{r}
+
+  tests <- bind_rows(
+    phos_effect(m15, "Baseline phosphate (and higher order factors)"), 
+    phos_effect(m16, "Pre-op phosphate (and higher order factors)"), 
+    phos_effect(m17, "Change in phosphate (and higher order factors)")
+  ) 
+
+```
+
+
+```{r}
+
+  t1 <- with(
+    filter(data_itt, !is.na(phos_bl_mmolL) & !is.na(post_op_comp3)), 
+    table(post_op_comp3)
+    )
+
+  g1 <- ggplot(Predict(m15, phos_bl_mmolL, group)) +
+    ylab("Proportion with Postoperative complications (grade 3+)") +
+    xlab("Baseline phosphate (mmol/L)") +
+    scale_color_brewer("", palette = "Set1") +
+    coord_cartesian(ylim = c(-3.6, -0.5), xlim = c(0.5, 2.5)) +
+    theme_minimal() +
+    theme(panel.grid.minor = element_blank(), 
+          aspect.ratio = 1, 
+          legend.position = "top") +
+    scale_y_continuous(trans = inverse_logit_brks_trans) +
+    geom_hline(yintercept = logit_trans(t1[2]/sum(t1)), linetype = "dashed") +
+    ggtitle("", subtitle = paste0("n = ", sum(t1), "; LRT p = ", tests$P[1]))
+
+  
+  t2 <- with(
+    filter(data_itt, !is.na(phos_preop_mmolL) & !is.na(post_op_comp3)),
+    table(post_op_comp3)
+    )
+
+  g2 <- ggplot(Predict(m16, phos_preop_mmolL, group)) +
+    ylab("") +
+    xlab("Pre-op phosphate (mmol/L)") +
+    scale_color_brewer(guide = FALSE, palette = "Set1") +
+    coord_cartesian(ylim = c(-3.6, -0.5), xlim = c(0.5, 2.5)) +
+    theme_minimal() +
+    theme(panel.grid.minor = element_blank(), 
+          aspect.ratio = 1, 
+          axis.text.y = element_blank()) +
+    scale_y_continuous(trans = inverse_logit_brks_trans) +
+    geom_hline(yintercept = logit_trans(t2[2]/sum(t2)), linetype = "dashed") +
+    ggtitle("", subtitle = paste0("n = ", sum(t2), "; LRT p = ", tests$P[2]))
+
+  
+  t3 <- with(
+    filter(data_itt, !is.na(phos_chg_mmolL) & !is.na(post_op_comp3)), 
+    table(post_op_comp3)
+    )
+
+  g3 <- ggplot(Predict(m17, phos_chg_mmolL, group)) +
+    ylab("") +
+    xlab("Change in phosphate (mmol/L)") +
+    scale_color_brewer(guide = FALSE, palette = "Set1") +
+    coord_cartesian(ylim = c(-3.6, -0.5)) +
+    theme_minimal() +
+    theme(panel.grid.minor = element_blank(), 
+          aspect.ratio = 1, 
+          axis.text.y = element_blank()) +
+    scale_y_continuous(trans = inverse_logit_brks_trans) +
+    geom_hline(yintercept = logit_trans(t3[2]/sum(t3)), linetype = "dashed")  +
+    ggtitle("", subtitle = paste0("n = ", sum(t3), "; LRT p = ", tests$P[3]))
+
+  
+  g1 | g2 | g3
+
+
+```
 
 # End matter
 
@@ -265,8 +684,8 @@ Due to skewness due to floor effects of phosphate measurements, we also estimima
 
 ```{r}
 
-  select(data_itt, identifier, group, phos_bl, phos_preop) %>%
-    gather(time, phosphate, phos_bl, phos_preop) %>% 
+  select(data_itt, identifier, group, phos_bl_mmolL, phos_preop_mmolL) %>%
+    gather(time, phosphate, phos_bl_mmolL, phos_preop_mmolL) %>% 
     mutate(time = factor(time, labels = c("Baseline", "Pre-op"))) %>%
   ggplot(aes(x = time, y = log10(phosphate))) +
     # geom_jitter(width = 0.1, height = 0) +
@@ -294,14 +713,13 @@ Due to skewness due to floor effects of phosphate measurements, we also estimima
 
 ```{r}
 
-  m2 <- lm(log10(phos_preop) ~ group + mc(log10(phos_bl)), 
+  m9 <- lm(log10(phos_preop_mmolL) ~ group + mc(log10(phos_bl_mmolL)), 
            data = data_itt)
 
   tab_model(m2)
 
 ```
 
-Pre-operative phosphate levels were 1.95 mmol/L lower in the iron arm vs the placebo arm (95%CI -2.56 to -1.35). 
 
 
 ## Regression diagnostics
@@ -319,7 +737,7 @@ Pre-operative phosphate levels were 1.95 mmol/L lower in the iron arm vs the pla
 
 ```{r}
 
-  autoplot(m2, which = 1:6, ncol = 3, size = 0.5, label.size = 3) +
+  autoplot(m9, which = 1:6, ncol = 3, size = 0.5, label.size = 3) +
     theme(plot.title = element_text(size = 10)) 
 
 ```

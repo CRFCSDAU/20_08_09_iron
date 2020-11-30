@@ -8,7 +8,7 @@
 # Pull the active tx effect from a model with exponentiation ----
   pull_ci <- function(model){
 
-    library(broom)
+    require(broom)
     x <- tidy(model) %>%
       mutate(
         ul = round(exp(estimate + (1.96 * std.error)), 2),
@@ -18,7 +18,7 @@
                         round(p.value, 2))
       )
 
-    return(x$effect[x$term == "groupActive"])
+    return(x$effect[x$term == x$term[grepl("Active", x$term)]])
   }
 
 # Pull the active tx effect from a model without exponentiation ----
@@ -35,7 +35,7 @@
                         round(p.value, 2))
       )
 
-    return(x$effect[x$term == "groupActive"])
+    return(x$effect[x$term == x$term[grepl("Active", x$term)]])
   }
 
 
@@ -439,6 +439,24 @@
     1 / (1 + exp(-x))
   }
 
+  logit_trans <- function(x){
+    (log(x / (1 - x)))
+  }
+
+
+  inverse_logit_brks_trans <-
+    scales::trans_new("inverse logit",
+              transform = plogis,
+              inverse = qlogis,
+              breaks = functional::Compose(plogis, scales::extended_breaks(), qlogis),
+              format = functional::Compose(plogis, scales::format_format()))
+
+  exp_brks_trans <-
+    scales::trans_new("exponentiate",
+                      transform = exp,
+                      inverse = log,
+                      breaks = functional::Compose(plogis, scales::extended_breaks(), log),
+                      format = functional::Compose(plogis, scales::format_format()))
 
   simpleCap <- function(x) {
     out <- c()
@@ -847,7 +865,9 @@
       }
 
     }
-    unlist(miss.list)
+    x <- unlist(miss.list)
+    x[is.na(x)] <- ""
+    x
   }
 
 

@@ -270,7 +270,9 @@
 
 # Add phosphate data -----------------------------------------------------------
 
-  phos <- read_excel("data/preventtRandomNoLinkLW.xlsx", skip = 1) %>%
+  # Sheet 2 mmol/L
+  phos <- read_excel("data/preventtRandomNoLinkLW.xlsx", skip = 1,
+                     sheet = 2) %>%
     clean_names() %>%
     rename(identifier = pat_id)
 
@@ -286,14 +288,43 @@
 
   data <- full_join(
     data,
-    select(phos, identifier, phos_bl = baseline, phos_preop = pre_operative),
+    select(phos, identifier, phos_bl_mmolL = baseline,
+           phos_preop_mmolL = pre_operative),
     by = "identifier"
   )
 
   expect_equal(nrow(data), k)
 
-  data$phos_bl <- as.numeric(data$phos_bl)
-  data$phos_preop <- as.numeric(data$phos_preop)
+  data$phos_bl_mmolL <- as.numeric(data$phos_bl_mmolL)
+  data$phos_preop_mmolL <- as.numeric(data$phos_preop_mmolL)
+
+  # Sheet 1 mg/dl
+  phos <- read_excel("data/preventtRandomNoLinkLW.xlsx", skip = 1) %>%
+    clean_names() %>%
+    rename(identifier = pat_id)
+
+  # length(phos$pat_id[phos$pat_id %in% data$identifier])
+  expect_equal(length(data$identifier), length(unique(data$identifier)))
+  expect_equal(length(phos$identifier), length(unique(phos$identifier)))
+  expect_equal(
+    length(phos$identifier[phos$identifier %in% data$identifier]),
+    length(phos$identifier)
+  )
+
+  k <- nrow(data)
+
+  data <- full_join(
+    data,
+    select(phos, identifier, phos_bl_mgdl = baseline,
+           phos_preop_mgdl = pre_operative),
+    by = "identifier"
+  )
+
+  expect_equal(nrow(data), k)
+
+  data$phos_bl_mgdl <- as.numeric(data$phos_bl_mgdl)
+  data$phos_preop_mgdl <- as.numeric(data$phos_preop_mgdl)
+
 
 
 # Inspect data structure -------------------------------------------------------
