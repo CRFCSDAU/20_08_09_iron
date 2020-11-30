@@ -44,20 +44,34 @@ output:
 
 ```{r}
 
-  levs <- c("0.7+ mmol/L", "< 0.7 mmol/L")
-
+  levs <- c("0.8+ mmol/L", "< 0.8 mmol/L")
+  levs2 <- c("Normal (0.80+)", "Mild [0.65 - 0.80)", "Moderate [.32 - 0.65)",
+             "Severe (< 0.32)")
+  
   data_itt <- filter(data, !is.na(primary_30d)) %>%
     arrange(identifier) %>%
     mutate(
       phos_chg_mmolL = phos_preop_mmolL - phos_bl_mmolL, 
-      phos_bl_07_mmolL = factor(ifelse(
-        phos_bl_mmolL <= 0.7, "< 0.7 mmol/L", "0.7+ mmol/L"
+      phos_bl_08_mmolL = factor(ifelse(
+        phos_bl_mmolL < 0.8, "< 0.8 mmol/L", "0.8+ mmol/L"
         ), levels = levs),
-      phos_preop_07_mmolL = factor(ifelse(
-        phos_preop_mmolL <= 0.7, "< 0.7 mmol/L", "0.7+ mmol/L"
-        ), levels = levs)
+      phos_preop_08_mmolL = factor(ifelse(
+        phos_preop_mmolL < 0.8, "< 0.8 mmol/L", "0.8+ mmol/L"
+        ), levels = levs), 
+      phos_bl_cat = factor(case_when(
+        phos_bl_mmolL >= 0.8                          ~ 1, 
+        phos_bl_mmolL <  0.8  & phos_bl_mmolL >= 0.65 ~ 2, 
+        phos_bl_mmolL <  0.65 & phos_bl_mmolL >= 0.32 ~ 3, 
+        phos_bl_mmolL <  0.32                         ~ 4, 
+      ), levels = 1:4, labels = levs2), 
+      phos_preop_cat = factor(case_when(
+        phos_preop_mmolL >= 0.8                             ~ 1, 
+        phos_preop_mmolL <  0.8  & phos_preop_mmolL >= 0.65 ~ 2, 
+        phos_preop_mmolL <  0.65 & phos_preop_mmolL >= 0.32 ~ 3, 
+        phos_preop_mmolL <  0.32                            ~ 4, 
+      ), levels = 1:4, labels = levs2)
     )
-
+  
   dd <- datadist(data_itt); options(datadist = "dd")
 
 ```
@@ -102,9 +116,12 @@ By comparing baseline vs pre-op values in the control and active arms (below), w
   table.1.var <- data_itt %>%
     mutate(log10_phos_bl_mmolL = log10(phos_bl_mmolL), 
            log10_phos_preop_mmolL = log10(phos_preop_mmolL)) %>% 
-    select(arm = group, phos_bl_mmolL, log10_phos_bl_mmolL, phos_bl_07_mmolL, 
-           phos_preop_mmolL, log10_phos_preop_mmolL, phos_preop_07_mmolL, 
-           phos_chg_mmolL) 
+    select(
+      arm = group, 
+      phos_bl_mmolL, log10_phos_bl_mmolL, phos_bl_08_mmolL, phos_bl_cat,
+      phos_preop_mmolL, log10_phos_preop_mmolL, phos_preop_08_mmolL,
+      phos_preop_cat, phos_chg_mmolL
+      ) 
 
   
   # map(table.1.var, class)
@@ -116,11 +133,15 @@ By comparing baseline vs pre-op values in the control and active arms (below), w
     "Baseline phosphate (mmol/L)",
     "Baseline phosphate (log10(mmol/L))",
     "Low baseline phospate",
-    levels(data_itt$phos_bl_07_mmolL),
+    levels(data_itt$phos_bl_08_mmolL),
+    "Baseline phosphate category",
+    levels(data_itt$phos_bl_cat),
     "Pre-op phosphate (mmol/L)",
     "Pre-op phosphate (log10(mmol/L))",
     "Low pre-op phospate",
-    levels(data_itt$phos_preop_07_mmolL),
+    levels(data_itt$phos_preop_08_mmolL),
+    "Baseline phosphate category",
+    levels(data_itt$phos_preop_cat),
     "Change in phosphate (mmol/L)"
   )
   
@@ -143,11 +164,15 @@ By comparing baseline vs pre-op values in the control and active arms (below), w
 
 ```{r}
 
+  reds <- RColorBrewer::brewer.pal(3, "Reds")
+
   select(data_itt, identifier, group, phos_bl_mmolL, phos_preop_mmolL) %>%
     gather(time, phosphate, phos_bl_mmolL, phos_preop_mmolL) %>% 
     mutate(time = factor(time, labels = c("Baseline", "Pre-op"))) %>%
   ggplot(aes(x = time, y = phosphate)) +
-    geom_hline(yintercept = 0.7, color = "black", linetype = "dashed") +
+    geom_hline(yintercept = 0.8, color = reds[1], size = 1) +
+    geom_hline(yintercept = 0.65, color = reds[2], size = 1) +
+    geom_hline(yintercept = 0.32, color = reds[3], size = 1) +
     geom_violin(aes(group = time), width = 0.3, color = "grey90", 
                 fill = "grey90") +
     geom_point(position = position_jitter(width = 0.05, height = 0,
@@ -157,12 +182,13 @@ By comparing baseline vs pre-op values in the control and active arms (below), w
                                                        seed = 12)) +
     geom_smooth(aes(x = as.numeric(time), y = phosphate), method = "lm",
                 se = FALSE) +
-    # geom_boxplot(alpha = 0.5, outlier.alpha = 0) +
     facet_wrap(~group) +
     xlab("") +
     ylab("Serum phosphate (mmol/L)") +
     scale_color_brewer(guide = FALSE, palette = "Set1") +
-    theme_minimal()
+    theme_minimal() +
+    scale_y_continuous(breaks = c(0, 0.32, 0.65, 0.8, 1, 1.5, 2, 2.5)) +
+    theme(panel.grid.minor = element_blank())
 
 ```
 <br>
@@ -171,7 +197,7 @@ By comparing baseline vs pre-op values in the control and active arms (below), w
 ```{r}
 
   m1 <- lm(phos_preop_mmolL ~ group + mc(phos_bl_mmolL), data = data_itt)
-  m2 <- glm(phos_preop_07_mmolL ~ group + mc(phos_bl_mmolL), data = data_itt, 
+  m2 <- glm(phos_preop_08_mmolL ~ group + mc(phos_bl_mmolL), data = data_itt, 
             family = binomial())
 ```
 
@@ -211,7 +237,9 @@ To help understand how phosphate levels might be associated with outcomes, we es
 <br>
 <br>
 
-### First co-primary outcome (death or BT in the first 30 days)
+## First co-primary outcome (death or BT in the first 30 days)
+
+### Continuous phosphate
 
 In the plots below, the dashed horizontal line reflects the marginal probability of the outcome in that analytic sample. The LRT p-value is a likelihood ratio test of the effect of phosphate. The red and blue lines reflect the arm-specific, non-linear associations between phosphate and the outcome, while the shaded areas reflect 95% CIs for those predicted outcomes. The underlying model for the first co-primary outcome was logistic regression. 
 
@@ -319,11 +347,32 @@ In the plots below, the dashed horizontal line reflects the marginal probability
   
 ```
 
+### Categorized phosphate
 
+```{r}
 
-### Second co-primary outcome (number of BTs in the first 30 days)
+  m3cat_i <- lrm(primary_30d ~ group * phos_bl_08_mmolL, data = data_itt)
+  m4cat_i <- lrm(primary_30d ~ group * phos_preop_08_mmolL, data = data_itt)
+  # anova(m3cat_i) No interaction
+  # anova(m4cat_i) No interaction
+
+  m3cat <- lrm(primary_30d ~ group + phos_bl_08_mmolL, data = data_itt)
+  m4cat <- lrm(primary_30d ~ group + phos_preop_08_mmolL, data = data_itt)
+  
+  tab_model(m3cat, m4cat)
+  # anova(m3cat) 
+  # anova(m4cat)
+
+```
+
+<br>
+<br>
+
+## Second co-primary outcome (number of BTs in the first 30 days)
 
 Modeled with quasi-Poisson regression. 
+
+### Continuous phosphate
 
 ```{r}
 
@@ -399,9 +448,33 @@ Modeled with quasi-Poisson regression.
   
 ```
 
-### Length of hospital stay
+### Categorized phosphate
 
-Modelled with linear regression on log-transformed hospital length of stay. 
+```{r}
+
+  m6cat_i <- Glm(BT_30d_num ~ group * phos_bl_08_mmolL + offset(obs_time_1_log),
+                 data = data_itt, family = quasipoisson())
+  m7cat_i <- Glm(BT_30d_num ~ group * phos_preop_08_mmolL  +
+                   offset(obs_time_1_log), 
+                 data = data_itt, family = quasipoisson())
+  # anova(m3cat_i) No interaction
+  # anova(m4cat_i) No interaction
+
+  m6cat <- glm(BT_30d_num ~ group + phos_bl_08_mmolL + offset(obs_time_1_log),
+               data = data_itt, family = quasipoisson(link = "log"))
+  m7cat <- glm(BT_30d_num ~ group + phos_preop_08_mmolL + offset(obs_time_1_log),
+               data = data_itt, family = quasipoisson(link = "log"))
+  
+  tab_model(m6cat, m7cat)
+
+```
+
+
+## Length of hospital stay
+
+Modeled with linear regression on log-transformed hospital length of stay. 
+
+### Continuous phosphate
 
 ```{r}
 
@@ -493,9 +566,29 @@ Modelled with linear regression on log-transformed hospital length of stay.
   
 ```
 
-### Length of ITU stay
+### Categorized phosphate
+
+```{r}
+
+  m9cat_i  <- ols(log(hosp_stay) ~ group * phos_bl_08_mmolL, data = data_itt)
+  m10cat_i <- ols(log(hosp_stay) ~ group * phos_preop_08_mmolL, data = data_itt)
+  # anova(m3cat_i) No interaction
+  # anova(m4cat_i) No interaction
+
+  m9cat <- lm(log(hosp_stay) ~ group + phos_bl_08_mmolL,
+               data = data_itt)
+  m10cat <- lm(log(hosp_stay) ~ group + phos_preop_08_mmolL,
+               data = data_itt)
+  
+  tab_model(m9cat, m10cat)
+
+```
+
+## Length of ITU stay
 
 Modeled with quasi-Poisson regression. 
+
+### Continuous phosphate
 
 ```{r}
 
@@ -587,9 +680,31 @@ Modeled with quasi-Poisson regression.
   
 ```
 
-### Postoperative complications (grade 3+)
+### Cateogorical phosphate
+
+```{r}
+
+  m12cat_i <- Glm(itu_stay ~ group * phos_bl_08_mmolL,
+                 data = data_itt, family = quasipoisson())
+  m13cat_i <- Glm(itu_stay ~ group * phos_preop_08_mmolL, 
+                 data = data_itt, family = quasipoisson())
+  # anova(m12cat_i) No interaction
+  # anova(m13cat_i) No interaction
+
+  m12cat <- glm(itu_stay ~ group + phos_bl_08_mmolL,
+               data = data_itt, family = quasipoisson(link = "log"))
+  m13cat <- glm(itu_stay ~ group + phos_preop_08_mmolL,
+               data = data_itt, family = quasipoisson(link = "log"))
+  
+  tab_model(m12cat, m13cat)
+
+```
+
+## Postoperative complications (grade 3+)
 
 Modeled with logistic regression
+
+### Continious phosphate
 
 ```{r}
 
@@ -673,6 +788,25 @@ Modeled with logistic regression
 
 
 ```
+
+### Categorical phosphate
+
+```{r}
+
+  m15cat_i <- lrm(post_op_comp3 ~ group * phos_bl_08_mmolL, data = data_itt)
+  m16cat_i <- lrm(post_op_comp3 ~ group * phos_preop_08_mmolL, data = data_itt)
+  # anova(m15cat_i) No interaction
+  # anova(m16cat_i) No interaction
+
+  m15cat <- lrm(post_op_comp3 ~ group + phos_bl_08_mmolL, data = data_itt)
+  m16cat <- lrm(post_op_comp3 ~ group + phos_preop_08_mmolL, data = data_itt)
+  
+  tab_model(m15cat, m16cat)
+  # anova(m15cat) 
+  # anova(m16cat)
+
+```
+
 
 # End matter
 
