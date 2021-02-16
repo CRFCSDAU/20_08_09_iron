@@ -1,0 +1,70 @@
+---
+title: 'Phosphate analysis'
+author: ''
+date: ''
+output: 
+  html_document:
+    df_print: paged
+    keep_md: true
+  word_document:
+    reference_docx: style.1.docx
+---
+
+```{r setup, include = FALSE}
+
+  knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, 
+                        fig.width  = 6 * 1.67, fig.height = 6)
+
+  proj <- rprojroot::find_rstudio_root_file()
+  knitr::opts_knit$set(root.dir = proj)
+  
+  load(paste0(proj, "/data/data.RData"))
+  
+  source(paste0(proj, "/scripts/functions.R"))
+
+  # load("data/data.RData")
+  # 
+  # source("scripts/functions.R")
+  
+  library(logbin)
+  library(MASS)
+  library(descr)
+  library(tidyverse)
+  library(viridis)
+  library(knitr)
+  library(rms)
+  library(Hmisc)
+  library(sjPlot)
+  library(ggfortify)
+  library(patchwork)
+  
+  select <- dplyr::select # Deals with conflict between dplyr and MASS with select
+  
+```
+
+## Complications, readmissions and infection
+
+Better characterization of complications, readmissions and infection
+In a nutshell, there is a lot more information on these outcomes in the trial dataset that merits more detailed description. 
+
+```{r}
+names(data)[199:204]
+```
+
+
+
+
+## Confirming days alive and out of hospital
+The median length of stay in each arm was ~ 9 days. Readmissions were substantially different, especially when looking at the actual number of days readmitted. There is a small concern that the existing calculation of the days alive and out of hospital doesn’t seem to match up with the large observed difference in total days readmitted, so this needs to be closely checked. 
+
+## Optimal length of follow-up for days alive and out of hospital
+
+There is some contention around how many days of follow-up would be best to truly capture the impact of the intervention on the outcome days alive and out of hospital. Candidates include 30, 45 and 90 days. We should conduct a sensitivity analysis where we look at this in more detail as a continuous function of follow-up time.
+
+```{r sysinfo}
+
+  DescTools::SysInfo()
+
+```
+
+

@@ -44,6 +44,10 @@ output:
 
 ```{r}
 
+# Categorize the phosphate values following "standard" cut-offs, using binary
+# and ternary categorizations. Also add a variable reflecting change between
+# baseline and pre-op.
+
   levs <- c("0.8+ mmol/L", "< 0.8 mmol/L")
   levs2 <- c("Normal (0.80+)", "Mild [0.65 - 0.80)", "Moderate [.32 - 0.65)",
              "Severe (< 0.32)")
@@ -81,7 +85,6 @@ output:
   # ggplot(data_itt, aes(phos_bl_mmolL, phos_bl_mgdl)) + geom_point()
   # ggplot(data_itt, aes(phos_preop_mmolL, phos_preop_mgdl)) + geom_point()
 
-
 ```
 
 ```{r}
@@ -114,8 +117,9 @@ By comparing baseline vs pre-op values in the control and active arms (below), w
 ```{r}
 
   table.1.var <- data_itt %>%
-    mutate(log10_phos_bl_mmolL = log10(phos_bl_mmolL), 
-           log10_phos_preop_mmolL = log10(phos_preop_mmolL)) %>% 
+    mutate(
+      log10_phos_bl_mmolL = log10(phos_bl_mmolL), 
+      log10_phos_preop_mmolL = log10(phos_preop_mmolL)) %>% 
     select(
       arm = group, 
       phos_bl_mmolL, log10_phos_bl_mmolL, phos_bl_08_mmolL, phos_bl_cat,
@@ -191,6 +195,7 @@ By comparing baseline vs pre-op values in the control and active arms (below), w
     theme(panel.grid.minor = element_blank())
 
 ```
+
 <br>
 <br>
 
@@ -201,7 +206,7 @@ By comparing baseline vs pre-op values in the control and active arms (below), w
             family = binomial())
 ```
 
-Pre-operative phosphate levels were 0.21 mmol/L lower in the iron arm vs the placebo arm (`r pull_ci_2(m1)`); meaning of course that the The odds of having a low serum phosphate (< 0.7 mmol/L) was higher in the active arm (OR `r pull_ci(m2)`). 
+Pre-operative phosphate levels were 0.21 mmol/L lower in the iron arm vs the placebo arm (`r pull_ci_2(m1)`); meaning of course that the The odds of having a low serum phosphate (< 0.8 mmol/L) was higher in the active arm (OR `r pull_ci(m2)`). 
 
 <br>
 <br>
@@ -217,7 +222,7 @@ Pre-operative phosphate levels were 0.21 mmol/L lower in the iron arm vs the pla
 <br>
 <br>
 
-**Table: Effect of iron on odds of low phosphate levels (< 0.7 mmol/L) estimated by logistic regression with adjustment for baseline phosphate.**
+**Table: Effect of iron on odds of low phosphate levels (< 0.8 mmol/L) estimated by logistic regression with adjustment for baseline phosphate.**
 
 ```{r}
 
@@ -227,6 +232,8 @@ Pre-operative phosphate levels were 0.21 mmol/L lower in the iron arm vs the pla
 
 <br>
 <br>
+
+Note: The number of observations for these two models was 354, since that was the number of patients who had phosphate measured at both baseline and pre-op The loss of sample will decrease the precision of the estimated between-arm difference in pre-op phosphate, but this is more than offset by the adjustment for baseline phosphate. 
 
 # Associations between phosphate levels and outcomes
 
@@ -258,6 +265,8 @@ In the plots below, the dashed horizontal line reflects the marginal probability
     phos_effect(m4, "Pre-op phosphate (and higher order factors)"), 
     phos_effect(m5, "Change in phosphate (and higher order factors)")
   ) 
+
+# See functions.R for phos_effect (just an ANOVA of the nested models)
 
 ```
 

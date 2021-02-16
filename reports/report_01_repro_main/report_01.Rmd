@@ -1,6 +1,6 @@
 ---
-title: ''
-author: ''
+title: "Reproducing the original PREVENTT analysis"
+author: "Darren L Dahly"
 date: ''
 output: 
   html_document:
@@ -28,17 +28,38 @@ output:
   library(tidyverse)
   library(viridis)
   library(knitr)
+  library(testthat)
   
-  select <- dplyr::select # Deals with conflict between dplyr and MASS with select
+  select <- dplyr::select 
+  # Deals with conflict between dplyr and MASS with select
+
+```
+
+```{r}
+
+# Key figures with page numbers where it can be found in the main trial paper
+  expect_equal(length(unique(data$identifier)), 487) # Total sample p5
+  expect_equal(length(unique(data$identifier)), nrow(data)) # 1 row per patient
+  expect_equal(as.numeric(table(data$itt)["Yes"]), 474) # ITT sample
+  expect_equal(as.numeric(table(data$group)["Placebo"]), 243) # Placebo arm p5
+  expect_equal(as.numeric(table(data$group)["Active"]), 244) # Active arm p5
+
+
 
 ```
 
 
-There were `r length(unique(data$identifier))` patients in the trial dataset, recruited from `r length(unique(data$siteid))` sites (**NOTE**: the trial paper says 46 sites). 
+The following script is for reproducing the original analysis of the PREVENTT trial data, published here: https://doi.org/10.1016/S0140-6736(20)31539-7. See the project /docs folder for the trial protocol and additional documentation. 
 
-Patients were randomized between `r min(data$rand_dt)` and `r max(data$rand_dt)`. 
+# Basic study characteristics
 
-## Timing of key study points
+There were `r length(unique(data$identifier))` patients in the trial dataset, recruited from `r length(unique(data$siteid))` sites (p 5; **NOTE**: the trial paper says 46 sites, but the patient and surgery datasets both have 41). 
+
+Patients were randomized between `r min(data$rand_dt)` and `r max(data$rand_dt)`.
+
+`r table(data$group)["Placebo"]` were randomly allocated to placebo, while `r table(data$group)["Active"]` were allocated to the active arm.
+
+**Figure. Timing of key study points**
 
 ```{r}
 
@@ -47,13 +68,15 @@ Patients were randomized between `r min(data$rand_dt)` and `r max(data$rand_dt)`
 # names(data)[c(47, 49, 51, 53:57)]
 
   tar <- which(names(data) %in% names(select(data, ends_with("_dt"))))
-  labs <- label.list[tar]
-  levs <- names(data)[tar]
+  labs <- label.list[tar][1:10]
+  levs <- names(data)[tar][1:10] # 11 is the comdined dates column, which we
+                                 # don't need
 
   select(data, identifier, wdraw_or_ltf, ends_with(("_dt"))) %>%
     mutate(identifier = reorder(factor(identifier), rand_dt)) %>%
     gather(type, time, - identifier, - wdraw_or_ltf) %>%
-    mutate(type = factor(type, levels = levs, labels = labs)) %>%
+    mutate(type = factor(type, levels = levs, labels = labs)) %>% 
+    filter(!is.na(type) & !is.na(time)) %>% 
   ggplot(aes(y = identifier, x = time, color = type, group = identifier)) +
     geom_line(alpha = 0.3) +
     geom_point() +
@@ -70,24 +93,27 @@ Patients were randomized between `r min(data$rand_dt)` and `r max(data$rand_dt)`
 
 ```{r}
 
-# Had iron, surgery - names(data)[c(48, 52)]
+# Had iron, surgery
 
-  t1 <- with(data, table(trtyn, surgyn, useNA = "always", dnn = c("Treated?", "Surgery?")))
+  t1 <- table(
+    data$trtyn, data$surgyn, useNA = "always", dnn = c("Treated?","Surgery?")
+    )
 
 ```
 
 ```{r}
-# Withdraws/LtF - names(data)[c(60:65)]
+
+# Withdraws/LtF
   
   t2 <- with(data, table(wdraw, ltfu, useNA = "always"))
 
 ```
 
-`r table(data$trtyn)["No"]` randomized patients did not receive the treatment under test; while `r table(data$surgyn)["No"]` did not undergo surgery. There were `r table(data$wdraw)["1"]` withdraws, with `r table(data$wdraw[data$surgyn == "No"])["1"]` of them prior to surgery. (**NOTE**: I don't have information on the type of surgery.)
+`r table(data$trtyn)["No"]` randomized patients did not receive the treatment under test; while `r table(data$surgyn)["No"]` did not undergo surgery, including 3 that withdrew consent before surgery. There were `r table(data$wdraw)["1"]` withdraws, with `r table(data$wdraw[data$surgyn == "No"])["1"]` of them prior to surgery. (**NOTE**: I don't have information on the type of surgery.)
 
 There were `r t2["0", "0"]` patients in the ITT analysis set. 
 
-There were `r table(data$pp)["1"]` patients in the per protocol set. (**NOTE**: The paper lists 388). 
+There were `r table(data$pp)["1"]` patients in the per protocol set. (**NOTE**: The paper lists 388. If I remove the withdrawls and ltfus, I still get a PP n = 387). 
 
 # Paper Table 1 (Baseline characteristics)
 
@@ -125,32 +151,54 @@ There were `r table(data$pp)["1"]` patients in the per protocol set. (**NOTE**: 
   
 ```
 
-This all matches. 
+This all matches the trial paper. 
 
 # Paper Figure 2 (hb over time)
 
 ```{r}
 
-  levs <- c("tdl_hb_bl", "tdl_hb_preop", "site_hb_8wk", "site_hb_6mo")
-  labs <- c("Baseline", "Pre-op", "8 weeks", "6 months")
-  labs2 <- c("0", "15", "56", "180")
+# Combine HB data in long format from the main trial dataset, with the 
+# immediate post-op hb values in hb_long. 
+
+  hb_full_long <- bind_rows(
+    select(
+      data, identifier, tdl_hb_bl, tdl_hb_preop, site_hb_8wk, site_hb_6mo
+      ) %>%
+      gather(time, hb, - identifier) %>% # Convert to long
+      filter(!is.na(hb)), 
+    select(hb_long, identifier, time = visit, hb = haem_visit) 
+    ) 
+
+  hb_full_long <- hb_full_long %>%
+    left_join(
+      select(data, identifier, group), # Add study arm
+      by = "identifier"
+    ) 
+
+```
 
 
-  fig_2_data <- select(data, group, levs) %>%
-    gather(time, hb, -group) %>%
+```{r}
+
+  levs <- unique(hb_full_long$time)[c(1, 2, 10, 6, 9, 8, 3, 4)]
+  labs <- c("BL", "OP", "D2-3", "D4-5", "D6-7", "D14", "Week 8", 
+            "Month 6")
+  labs2 <- c("0", "5", "7", "9", "11", "15", "25", "35")
+
+  fig_2_data <- hb_full_long %>%
+    filter(time %in% levs) %>%
     mutate(
       time = factor(time, levels = levs, labels = labs), 
       time2  = as.numeric(as.character(factor(time, levels = labs, 
                                               labels = labs2)))
     ) %>% group_by(time2, group) %>%
     summarise(
-      n = n(), 
-      obs = table(is.na(hb))["FALSE"],
+      n = n(), # These all match the table
       est = mean(hb, na.rm = TRUE),
       se = sd(hb, na.rm = TRUE) / sqrt(n), 
       ul = est + (1.96 * se), 
       ll = est - (1.96 * se), 
-    ) 
+    )                     
   
   fig_2_data[map_lgl(fig_2_data, is.numeric)] <- 
     map_df(fig_2_data[map_lgl(fig_2_data, is.numeric)], function(x) round(x, 2))
@@ -164,77 +212,39 @@ This all matches.
   
 ```
 
+
 ```{r}
 
   ggplot(fig_2_data, aes(x = time2, y = est, ymax = ul, ymin = ll, 
                          color = group)) +
-    geom_line(position = position_dodge(width = 3)) +
-    geom_point(position = position_dodge(width = 3)) +
-    geom_errorbar(position = "dodge", width = 3) +
+    geom_line(position = position_dodge(width = 1)) +
+    geom_point(position = position_dodge(width = 1)) +
+    geom_errorbar(position = "dodge", width = 1) +
     scale_color_brewer("", palette = "Set1") +
     scale_x_continuous(breaks = as.numeric(labs2), labels = labs) +
+    scale_y_continuous(breaks = seq(90, 130, by = 10), limits = c(90, 130)) +
     xlab("") +
-    ylab("Mean (95% CI) haemoglobin (g/L)")
+    ylab("Mean (95% CI) haemoglobin (g/L)") +
+    theme(panel.grid = element_blank())
 
 ```
-
-**NOTE**: I don't have the immediately post surgery values (up to day 14)
-
-## Paper Figure 2 table
 
 ```{r}
 
-  kable(select(fig_2_data, group, obs, full, time))
+  kable(select(fig_2_data, time, group, n, full))
 
 ```
 
+This all matches the figure in the table. 
 
 ```{r}
 
-  data_itt   <- filter(data, itt   == "Yes")
-  data_itt_2 <- filter(data, itt_2 == "Yes")
+  data_itt <- filter(data, itt   == "Yes")
 
 ```
 
 
-# Table 2 (Co-primary outcomes)
-
-## Co-primary outcomes (30 day BT or death; number of BT), crude result, total sample
-
-```{r}
-
-  # with(data, table(group)) %>% sum()
-  # with(data_itt, table(group)) %>% sum()
-
-  # with(data, table(group, primary_30d)) %>% sum()
-  # with(data, table(group, BT_30d)) %>% sum()
-  # with(data, table(group, death_30d)) %>% sum()
-
-  # filter(data, is.na(primary_30d) & !is.na(death_30d)) %>% View()
-  # 7 patients with missing primary but not death at 30 days. They are all 
-  # missing BT at 30 days. 
-
-  table.2.var <- data %>%
-    select(
-      arm = group, primary_30d, BT_30d, death_30d, BT_30d_num_cat, 
-      BT_30d_num
-    )
-  
-  act <- filter(table.2.var, arm == "Active") %>% select(-arm)
-  con <- filter(table.2.var, arm == "Placebo") %>% select(-arm)
-
-  data_frame("Variable" = name.1(select(table.2.var, -arm)),
-             "Observations" = as.numeric(n.miss(select(table.2.var, -arm))),
-             "Control (n = 243; 237)" = summary.1(con),
-             "Active (n = 244; 237)" = summary.1(act)) %>% 
-    kable()
-
-  rm(act, con)
-
-
-```
-
-These numbers are in the overall sample, rather than the sample specifically flagged as the ITT sample. In the overall sample, I have n = 243 and 244 in the placebo and active groups respectively (as noted at the top of this table and the one in the trial paper). However, the sample sizes given within the table indicate 377 in both groups. Presumably, this is the ITT sample. The only place where the table above differs is that 7 extra observations of death at 30 days for people that didn't have BT at 30 days (and this the first primary at 30 days). 
+# Table 2 (Co-primary outcomes: 30 day BT or death, number of BT; crude result, ITT sample)
 
 ```{r}
 
@@ -244,20 +254,9 @@ These numbers are in the overall sample, rather than the sample specifically fla
 
 ```
 
-## Co-primary outcomes (30 day BT or death; number of BT), crude result, ITT sample
-
-Now we define the ITT sample as having a measure for the first primary at 30 days, then everything adds up correctly and matches table 2 in the paper. 
-
 ```{r}
 
-  # with(data, table(group))
-  # with(data_itt, table(group))
-
-  # with(data, table(group, primary_30d))
-  # with(data, table(group, BT_30d))
-  # with(data, table(group, death_30d))
-  
-  table.2.var <- data_itt_2 %>%
+  table.2.var <- data_itt %>%
     select(
       arm = group, primary_30d, BT_30d, death_30d, BT_30d_num_cat, 
       BT_30d_num
@@ -277,9 +276,10 @@ Now we define the ITT sample as having a measure for the first primary at 30 day
 
 ```
 
+Everything matches the paper. 
+
 
 ## Model-based estimate for the first primary outcome (RR)
-
 
 ```{r}
 
@@ -292,11 +292,8 @@ Now we define the ITT sample as having a measure for the first primary at 30 day
 # study, the length of each patient’s period of observation was included as an
 # exposure in the model.
 
-  m1_prim_a <- glm(primary_30d ~ group, data = data, 
-                   family = binomial(link = "logit")) # OR -Not what
-                                                      # they did or reported
 
-  m1_prim_b <- glm(primary_30d ~ group, data = data, 
+  m1_prim <- glm(primary_30d ~ group, data = data, 
                    family = binomial(link = "log"), 
                    start = c(-1, 0)) # RR 
   
@@ -305,7 +302,6 @@ Now we define the ITT sample as having a measure for the first primary at 30 day
 
 # Note - this matches but with no adjustment for time under observation.   
   
-# pull_ci(m1_prim_b) # Same 
 # pull_ci(m1_prim_c)
   
 # LRT p-values  
@@ -315,18 +311,17 @@ Now we define the ITT sample as having a measure for the first primary at 30 day
 
 ```
 
-Using a binomial GLM with a log link function, the estimated effect (relative risk) on the first primary outcome was `r  pull_ci(m1_prim_b)`. This matched what was reported in the paper. 
+Using a binomial GLM with a log link function, the estimated effect (relative risk) on the first primary outcome was `r  pull_ci(m1_prim)`. This matched what was reported in the paper. 
 
 ## Model-based estimate for the second primary outcome (IRR)
 
 ```{r}
 
-  m2_prim_a <- glm.nb(BT_30d_num ~ group, data = data) 
-  m2_prim_b <- glm.nb(BT_30d_num ~ group + offset(log(obs_time_1)), data = data) 
+  m2_prim <- glm.nb(BT_30d_num ~ group + offset(log(obs_time_1)), data = data)
 
 ```
 
-Using a negative-binomial GLM with a log link function, the estimated effect (incidence rate ratio) on the second primary outcome was `r  pull_ci(m2_prim_b)`. This matches what was reported in the paper. 
+Using a negative-binomial GLM with a log link function, the estimated effect (incidence rate ratio) on the second primary outcome was `r  pull_ci(m2_prim)`. This matches what was reported in the paper. 
 
 
 # Table 3 (Original subgroups)
@@ -335,13 +330,11 @@ Using a negative-binomial GLM with a log link function, the estimated effect (in
 
 ```{r}
 
-
   vars <- c("age_cat", "tdl_hb_bl_cat", "gender", "bmi_cat",
             "tdl_ferritin_bl_cat", "tdl_tsat_bl_cat")
 
   map2_dfr(vars, rep("primary_30d", times = length(vars)), sub_sum_1) %>% 
     kable()
-
 
 ```
 
@@ -369,23 +362,24 @@ This all matches.
 
 ## Units of blood from randomization to 30 days (exluding LBT)
 
-
 ```{r}
 
+  df <- filter(data_itt, large_BT_3mo == "No")
+  
+# names(data[c(81:83)])
+
   bind_rows(
-    means_sds("UNITS_30d_num", data), 
-    counts_pct("BT_30d_num", data), 
-    total_units("UNITS_30d_num", data)
+    means_sds("UNITS_30d_num", df), 
+    counts_pct("BT_30d_num", df), 
+    total_units("UNITS_30d_num", df)
   ) %>%
   kable()
 
-  m1 <- glm.nb(UNITS_30d_num ~ group + offset(log(obs_time_1)), data = data)
+  m1 <- glm.nb(UNITS_30d_num ~ group + offset(log(obs_time_1)), data = df)
   
-
 ```
 
-
-The model result was `r pull_ci(m1)`. The reproduced table doesn't exactly match the results presented in the paper, as both the counts of patients with >= 1 transfusion and the model results are slightly off. This could be because there is no flag for LBT at +30 days, so I wasn't able to confirm those were removed. However, the total counts do match, and a cross-tab of BTs and units did not suggest there were any individuals with LBTs.
+The model result was `r pull_ci(m1)`. This all matches what was reported in the paper. 
 
 
 ## Units of blood from randomization to 6 months (exluding LBT)
@@ -394,22 +388,20 @@ The model result was `r pull_ci(m1)`. The reproduced table doesn't exactly match
 
 # data_1 <- filter(data, large_BT_6mo == "No")
 
- dat <- filter(data, !is.na(primary_30d))
+  df <- filter(data_itt)
 
   bind_rows(
-    means_sds("UNITS_6mo_num", dat), 
-    counts_pct("BT_6mo_num", dat), 
-    total_units("UNITS_6mo_num", dat)
+    means_sds("UNITS_6mo_num", df), 
+    counts_pct("BT_6mo_num", df), 
+    total_units("UNITS_6mo_num", df)
   ) %>%
   kable()
 
- 
-
-  m1 <- glm.nb(UNITS_6mo_num ~ group, data = dat) # Fix offset...had missings
+  m1 <- glm.nb(UNITS_6mo_num ~ group, data = df) # Fix offset...had missings
 
 ```
 
-The model result was `r pull_ci(m1)`. These figures are again close, but just a bit off. Interestingly, if I remove patients who were flagged for LBT at 6 months (my dataset *does* have that variable), the figures are even further off. **QUERY**
+The model result was `r pull_ci(m1)`. These figures are very close, but just a bit off. This isn't fixed by using the existing or new flag for LBT by 6 months. 
 
 
 ## Days alive and out of hospital
@@ -448,17 +440,19 @@ The model result was `r pull_ci(m1)`. This all matches what was reported in the 
 ```{r}
 
   bind_rows(
+    means_sds("mfi_total_preop", data),
     means_sds("mfi_total_8wk", data), 
     means_sds("mfi_total_6mo", data)
   ) %>%
   kable()
 
-  m1 <- lm(mfi_total_8wk ~ group + mfi_total_bl, data = data)
-  m2 <- lm(mfi_total_6mo ~ group + mfi_total_bl, data = data)
+  m1 <- lm(mfi_total_preop ~ group + mfi_total_bl, data = data)
+  m2 <- lm(mfi_total_8wk ~ group + mfi_total_bl, data = data)
+  m3 <- lm(mfi_total_6mo ~ group + mfi_total_bl, data = data)
 
 ```
 
-The model results were `r pull_ci_2(m1)` for MFI at 8 weeks, and `r pull_ci_2(m2)` for MFI at 6 months. This all matches what was reported in the paper, but I am missing the MFI scores at +10 days. 
+The model results were `r pull_ci_2(m1)` for pre-operatively, `r pull_ci_2(m2)` for MFI at 8 weeks, and `r pull_ci_2(m3)` for MFI at 6 months. This all matches what was reported in the paper. 
 
 
 ## EQ-5D-5L
@@ -466,21 +460,26 @@ The model results were `r pull_ci_2(m1)` for MFI at 8 weeks, and `r pull_ci_2(m2
 ```{r}
 
   bind_rows(
+    means_sds("eq5d_total_preop", data),
     means_sds("eq5d_total_8wk", data),
     means_sds("eq5d_total_6mo", data),
+    means_sds("eq5d_health_score_preop", data),
     means_sds("eq5d_health_score_8wk", data),
     means_sds("eq5d_health_score_6mo", data)
   ) %>%
   kable()
 
-  m1 <- lm(eq5d_total_8wk ~ group + eq5d_total_bl, data = data)
-  m2 <- lm(eq5d_total_6mo ~ group + eq5d_total_bl, data = data)
-  m3 <- lm(eq5d_health_score_8wk ~ group + eq5d_health_score_bl, data = data)
-  m4 <- lm(eq5d_health_score_6mo ~ group + eq5d_health_score_bl, data = data)
+  m1 <- lm(eq5d_total_preop ~ group + eq5d_total_bl, data = data)
+  m2 <- lm(eq5d_total_8wk ~ group + eq5d_total_bl, data = data)
+  m3 <- lm(eq5d_total_6mo ~ group + eq5d_total_bl, data = data)
+  
+  m4 <- lm(eq5d_health_score_preop ~ group + eq5d_total_bl, data = data)
+  m5 <- lm(eq5d_health_score_8wk ~ group + eq5d_health_score_bl, data = data)
+  m6 <- lm(eq5d_health_score_6mo ~ group + eq5d_health_score_bl, data = data)
 
 ```
 
-For the utility score, the model results were `r pull_ci_2(m1)` at 8 weeks, and `r pull_ci_2(m2)` at 6 months. For the health score, the model results were `r pull_ci_2(m3)` at 8 weeks, and `r pull_ci_2(m4)` at 6 months.This all matches what was reported in the paper, but I am missing the MFI scores at +10 days. **QUERY.** 
+For the utility score, the model results were `r pull_ci_2(m1)` at pre-op, `r pull_ci_2(m2)` at 8 weeks, and `r pull_ci_2(m3)` at 6 months. For the health score, the model results were `r pull_ci_2(m4)` at pre-op, `r pull_ci_2(m5)` at 8 weeks, and `r pull_ci_2(m6)` at 6 months. This all matches what was reported in the paper.
 
 
 # ICU length of stay
@@ -532,7 +531,7 @@ Matches exactly.
 
 ```
 
-The model results were `r pull_ci(m1)` for all-cause mortality at 30 days, and `r pull_ci(m2)` at 6 months. This is off by 1 non-death at 30 days in the Iron group, but otherwise matches exactly. **QUERY** This matches with the one active arm patient missing a death at 30 days measurement but that did have a primary at 30 days measurement (a No).  
+The model results were `r pull_ci(m1)` for all-cause mortality at 30 days, and `r pull_ci(m2)` at 6 months. This is off by 1 non-death at 30 days in the Iron group, but otherwise matches exactly. This is explained by the one active arm patient missing a death at 30 days measurement but that did have a primary at 30 days measurement (a "No"). That has been corrected in this dataset.  
 
 
 ## Readmission for complications
@@ -561,7 +560,7 @@ The model results were `r pull_ci(m1)` for all-cause mortality at 30 days, and `
 
 ```
 
-The model results at 8 weeks were `r pull_ci(m1)` for any complications, and `r pull_ci(m2)` for the number of complications. The model results at 6 months were `r pull_ci(m3)` for any complications, and `r pull_ci(m4)` for the number of complications. This all matches, expect the final model result, which is just slightly off. **QUERY**
+The model results at 8 weeks were `r pull_ci(m1)` for any complications, and `r pull_ci(m2)` for the number of complications. The model results at 6 months were `r pull_ci(m3)` for any complications, and `r pull_ci(m4)` for the number of complications. **NOTE**: This all matches, expect the final model result, which is just slightly off. 
 
 
 # Additional subgroup analyses
@@ -623,16 +622,6 @@ This all matches, except as noted in the previous table, for the same reason.
 
   DescTools::SysInfo()
 
-```
-
-
-
-
-```{r}
-
-  ggplot(data, aes(surg_plan_dt, surg_dt)) +
-    geom_point(size = 3, alpha = 0.3)
- 
 ```
 
 
