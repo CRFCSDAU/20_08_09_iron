@@ -43,62 +43,33 @@ output:
 ```
 
 ```{r}
-
-# Categorize the phosphate values following "standard" cut-offs, using binary
-# and ternary categorizations. Also add a variable reflecting change between
-# baseline and pre-op.
-
-  levs <- c("0.8+ mmol/L", "< 0.8 mmol/L")
-  levs2 <- c("Normal (0.80+)", "Mild [0.65 - 0.80)", "Moderate [.32 - 0.65)",
-             "Severe (< 0.32)")
   
-  data_itt <- filter(data, !is.na(primary_30d)) %>%
-    arrange(identifier) %>%
-    mutate(
-      phos_chg_mmolL = phos_preop_mmolL - phos_bl_mmolL, 
-      phos_bl_08_mmolL = factor(ifelse(
-        phos_bl_mmolL < 0.8, "< 0.8 mmol/L", "0.8+ mmol/L"
-        ), levels = levs),
-      phos_preop_08_mmolL = factor(ifelse(
-        phos_preop_mmolL < 0.8, "< 0.8 mmol/L", "0.8+ mmol/L"
-        ), levels = levs), 
-      phos_bl_cat = factor(case_when(
-        phos_bl_mmolL >= 0.8                          ~ 1, 
-        phos_bl_mmolL <  0.8  & phos_bl_mmolL >= 0.65 ~ 2, 
-        phos_bl_mmolL <  0.65 & phos_bl_mmolL >= 0.32 ~ 3, 
-        phos_bl_mmolL <  0.32                         ~ 4, 
-      ), levels = 1:4, labels = levs2), 
-      phos_preop_cat = factor(case_when(
-        phos_preop_mmolL >= 0.8                             ~ 1, 
-        phos_preop_mmolL <  0.8  & phos_preop_mmolL >= 0.65 ~ 2, 
-        phos_preop_mmolL <  0.65 & phos_preop_mmolL >= 0.32 ~ 3, 
-        phos_preop_mmolL <  0.32                            ~ 4, 
-      ), levels = 1:4, labels = levs2)
-    )
+  data <- select(data, - time_ecg, - ltfu_pre8) %>%
+    filter(!is.na(primary_30d))
   
-  dd <- datadist(data_itt); options(datadist = "dd")
+  dd <- datadist(data); options(datadist = "dd")
 
 ```
 
 ```{r}
 
-  # ggplot(data_itt, aes(phos_bl_mmolL, phos_bl_mgdl)) + geom_point()
-  # ggplot(data_itt, aes(phos_preop_mmolL, phos_preop_mgdl)) + geom_point()
+  # ggplot(data, aes(phos_bl_mmolL, phos_bl_mgdl)) + geom_point()
+  # ggplot(data, aes(phos_preop_mmolL, phos_preop_mgdl)) + geom_point()
 
 ```
 
 ```{r}
   
-  t1 <- table(is.na(data_itt$phos_bl_mmolL))
-  t2 <- table(is.na(data_itt$phos_preop_mmolL))
-  t3 <- with(data_itt, table(is.na(phos_bl_mmolL), is.na(phos_preop_mmolL)))
+  t1 <- table(is.na(data$phos_bl_mmolL))
+  t2 <- table(is.na(data$phos_preop_mmolL))
+  t3 <- with(data, table(is.na(phos_bl_mmolL), is.na(phos_preop_mmolL)))
   
 ```
 
 
 # Number of observations with phosphate values
 
-In the ITT sample (n = `r nrow(data_itt)`), phosphate (mmol/L) was measured in `r t1["FALSE"]` patients at baseline and `r t2["FALSE"]` patients prior to their operation but after the intervention was administered (`r t3[1]` patients had phosphate measured at both time points and `r t3[4]` had it measured at neither).  
+In the ITT sample (n = `r nrow(data)`), phosphate (mmol/L) was measured in `r t1["FALSE"]` patients at baseline and `r t2["FALSE"]` patients prior to their operation but after the intervention was administered (`r t3[1]` patients had phosphate measured at both time points and `r t3[4]` had it measured at neither).  
 
 <br>
 <br>
@@ -116,15 +87,17 @@ By comparing baseline vs pre-op values in the control and active arms (below), w
 
 ```{r}
 
-  table.1.var <- data_itt %>%
+  table.1.var <- data %>%
     mutate(
       log10_phos_bl_mmolL = log10(phos_bl_mmolL), 
       log10_phos_preop_mmolL = log10(phos_preop_mmolL)) %>% 
     select(
       arm = group, 
-      phos_bl_mmolL, log10_phos_bl_mmolL, phos_bl_08_mmolL, phos_bl_cat,
-      phos_preop_mmolL, log10_phos_preop_mmolL, phos_preop_08_mmolL,
-      phos_preop_cat, phos_chg_mmolL
+      phos_bl_mmolL, log10_phos_bl_mmolL, phos_bl_8_mmolL, 
+      phos_bl_65_mmolL, phos_bl_cat,
+      phos_preop_mmolL, log10_phos_preop_mmolL, phos_preop_8_mmolL,
+      phos_preop_65_mmolL, phos_preop_cat, 
+      phos_chg_mmolL
       ) 
 
   
@@ -137,15 +110,19 @@ By comparing baseline vs pre-op values in the control and active arms (below), w
     "Baseline phosphate (mmol/L)",
     "Baseline phosphate (log10(mmol/L))",
     "Low baseline phospate",
-    levels(data_itt$phos_bl_08_mmolL),
+    levels(data$phos_bl_8_mmolL),
+    "Very low baseline phospate",
+    levels(data$phos_bl_65_mmolL),
     "Baseline phosphate category",
-    levels(data_itt$phos_bl_cat),
+    levels(data$phos_bl_cat),
     "Pre-op phosphate (mmol/L)",
     "Pre-op phosphate (log10(mmol/L))",
     "Low pre-op phospate",
-    levels(data_itt$phos_preop_08_mmolL),
+    levels(data$phos_preop_8_mmolL),
+    "Very low pre-op phospate",
+    levels(data$phos_preop_65_mmolL),
     "Baseline phosphate category",
-    levels(data_itt$phos_preop_cat),
+    levels(data$phos_preop_cat),
     "Change in phosphate (mmol/L)"
   )
   
@@ -170,7 +147,7 @@ By comparing baseline vs pre-op values in the control and active arms (below), w
 
   reds <- RColorBrewer::brewer.pal(3, "Reds")
 
-  select(data_itt, identifier, group, phos_bl_mmolL, phos_preop_mmolL) %>%
+  select(data, identifier, group, phos_bl_mmolL, phos_preop_mmolL) %>%
     gather(time, phosphate, phos_bl_mmolL, phos_preop_mmolL) %>% 
     mutate(time = factor(time, labels = c("Baseline", "Pre-op"))) %>%
   ggplot(aes(x = time, y = phosphate)) +
@@ -201,8 +178,8 @@ By comparing baseline vs pre-op values in the control and active arms (below), w
 
 ```{r}
 
-  m1 <- lm(phos_preop_mmolL ~ group + mc(phos_bl_mmolL), data = data_itt)
-  m2 <- glm(phos_preop_08_mmolL ~ group + mc(phos_bl_mmolL), data = data_itt, 
+  m1 <- lm(phos_preop_mmolL ~ group + mc(phos_bl_mmolL), data = data)
+  m2 <- glm(phos_preop_8_mmolL ~ group + mc(phos_bl_mmolL), data = data, 
             family = binomial())
 ```
 
@@ -252,9 +229,9 @@ In the plots below, the dashed horizontal line reflects the marginal probability
 
 ```{r}
 
-  m3 <- lrm(primary_30d ~ group * rcs(phos_bl_mmolL, 4), data = data_itt)
-  m4 <- lrm(primary_30d ~ group * rcs(phos_preop_mmolL, 4), data = data_itt)
-  m5 <- lrm(primary_30d ~ group * rcs(phos_chg_mmolL, 4), data = data_itt)
+  m3 <- lrm(primary_30d ~ group * rcs(phos_bl_mmolL, 4), data = data)
+  m4 <- lrm(primary_30d ~ group * rcs(phos_preop_mmolL, 4), data = data)
+  m5 <- lrm(primary_30d ~ group * rcs(phos_chg_mmolL, 4), data = data)
 
 ```
 
@@ -273,7 +250,7 @@ In the plots below, the dashed horizontal line reflects the marginal probability
 
 ```{r}
 
-  t1 <- with(filter(data_itt, !is.na(phos_bl_mmolL)), table(primary_30d))
+  t1 <- with(filter(data, !is.na(phos_bl_mmolL)), table(primary_30d))
 
   g1 <- ggplot(Predict(m3, phos_bl_mmolL, group)) +
     ylab("Proportion with BT or death in 30 days") +
@@ -289,7 +266,7 @@ In the plots below, the dashed horizontal line reflects the marginal probability
     ggtitle("", subtitle = paste0("n = ", sum(t1), "; LRT p = ", tests$P[1]))
 
   
-  t2 <- with(filter(data_itt, !is.na(phos_preop_mmolL)), table(primary_30d))
+  t2 <- with(filter(data, !is.na(phos_preop_mmolL)), table(primary_30d))
 
   g2 <- ggplot(Predict(m4, phos_preop_mmolL, group)) +
     ylab("") +
@@ -305,7 +282,7 @@ In the plots below, the dashed horizontal line reflects the marginal probability
     ggtitle("", subtitle = paste0("n = ", sum(t2), "; LRT p = ", tests$P[2]))
 
   
-  t3 <- with(filter(data_itt, !is.na(phos_chg_mmolL)), table(primary_30d))
+  t3 <- with(filter(data, !is.na(phos_chg_mmolL)), table(primary_30d))
 
   g3 <- ggplot(Predict(m5, phos_chg_mmolL, group)) +
     ylab("") +
@@ -360,15 +337,15 @@ In the plots below, the dashed horizontal line reflects the marginal probability
 
 ```{r}
 
-  m3cat_i <- lrm(primary_30d ~ group * phos_bl_08_mmolL, data = data_itt)
-  m4cat_i <- lrm(primary_30d ~ group * phos_preop_08_mmolL, data = data_itt)
-  # anova(m3cat_i) No interaction
-  # anova(m4cat_i) No interaction
-
-  m3cat <- lrm(primary_30d ~ group + phos_bl_08_mmolL, data = data_itt)
-  m4cat <- lrm(primary_30d ~ group + phos_preop_08_mmolL, data = data_itt)
+  m3cat_i <- lrm(primary_30d ~ group * phos_bl_8_mmolL, data = data)
+  m4cat_i <- lrm(primary_30d ~ group * phos_preop_8_mmolL, data = data)
+  # anova(m3cat_i) # No interaction
+  # anova(m4cat_i) # No interaction
   
-  tab_model(m3cat, m4cat)
+  m3cat <- lrm(primary_30d ~ group + phos_bl_8_mmolL, data = data)
+  m4cat <- lrm(primary_30d ~ group + phos_preop_8_mmolL, data = data)
+  
+  # tab_model(m3cat, m4cat)
   # anova(m3cat) 
   # anova(m4cat)
 
@@ -376,6 +353,20 @@ In the plots below, the dashed horizontal line reflects the marginal probability
 
 <br>
 <br>
+
+
+```{r}
+
+  vars <- c("phos_preop_8_mmolL", "phos_bl_8_mmolL", "phos_preop_65_mmolL",
+            "phos_bl_65_mmolL")
+
+  map2_dfr(vars, rep("primary_30d", times = length(vars)), sub_sum_1_or) %>% 
+    kable()
+
+```
+
+Effects are ORs from logistic regression models. There aren't enough observations in the arm-specific low phosphate groups at baseline to estimate those subgroup specific treatment effects which is why the estimates are so extreme. LRT P values are for the likelihood ratio test of the overall interaction. 
+
 
 ## Second co-primary outcome (number of BTs in the first 30 days)
 
@@ -387,17 +378,17 @@ Modeled with quasi-Poisson regression.
 
   m6 <- Glm(
     BT_30d_num ~ group * rcs(mc(phos_bl_mmolL), 4) + offset(obs_time_1_log),
-    family = quasipoisson(), data = data_itt
+    family = quasipoisson(), data = data
     )
 
   m7 <- Glm(
     BT_30d_num ~ group * rcs(mc(phos_preop_mmolL), 4) + offset(obs_time_1_log), 
-    family = quasipoisson(), data = data_itt
+    family = quasipoisson(), data = data
     )
   
   m8 <- Glm(
     BT_30d_num ~ group * rcs(mc(phos_chg_mmolL), 4) + offset(obs_time_1_log), 
-    family = quasipoisson(), data = data_itt
+    family = quasipoisson(), data = data
     )
   
   tests <- bind_rows(
@@ -413,8 +404,8 @@ Modeled with quasi-Poisson regression.
 
   off <- setNames(list(NA), c("obs_time_1_log"))
 
-  mn1 <- with(filter(data_itt, !is.na(phos_bl_mmolL)), mean(BT_30d_num)) / 30
-  n1 <- nrow(filter(data_itt, !is.na(phos_bl_mmolL)))
+  mn1 <- with(filter(data, !is.na(phos_bl_mmolL)), mean(BT_30d_num)) / 30
+  n1 <- nrow(filter(data, !is.na(phos_bl_mmolL)))
   g1 <- ggplot(Predict(m6, phos_bl_mmolL, group, offset = off)) +
     ylab("log(Number of BTs/day)") +
     xlab("Baseline phosphate (mmol/L)") +
@@ -425,8 +416,8 @@ Modeled with quasi-Poisson regression.
           aspect.ratio = 1) +
     ggtitle("", subtitle = paste0("n = ", n1, "; LRT p = ", tests$P[1])) 
 
-  mn2 <- with(filter(data_itt, !is.na(phos_preop_mmolL)), mean(BT_30d_num)) / 30
-  n2 <- nrow(filter(data_itt, !is.na(phos_preop_mmolL)))
+  mn2 <- with(filter(data, !is.na(phos_preop_mmolL)), mean(BT_30d_num)) / 30
+  n2 <- nrow(filter(data, !is.na(phos_preop_mmolL)))
   g2 <- ggplot(Predict(m7, phos_preop_mmolL, group, offset = off)) +
     ylab("") +
     xlab("Pre-op phosphate (mmol/L)") +
@@ -439,8 +430,8 @@ Modeled with quasi-Poisson regression.
     geom_hline(yintercept = mn2, linetype = "dashed")  +
     ggtitle("", subtitle = paste0("n = ", n2, "; LRT p = ", tests$P[2]))
 
-  mn3 <- with(filter(data_itt, !is.na(phos_chg_mmolL)), mean(BT_30d_num)) / 30
-  n3 <- nrow(filter(data_itt, !is.na(phos_chg_mmolL)))
+  mn3 <- with(filter(data, !is.na(phos_chg_mmolL)), mean(BT_30d_num)) / 30
+  n3 <- nrow(filter(data, !is.na(phos_chg_mmolL)))
   g3 <- ggplot(Predict(m8, phos_chg_mmolL, group, offset = off)) +
     ylab("") +
     xlab("Change in phosphate (mmol/L)") +
@@ -461,22 +452,35 @@ Modeled with quasi-Poisson regression.
 
 ```{r}
 
-  m6cat_i <- Glm(BT_30d_num ~ group * phos_bl_08_mmolL + offset(obs_time_1_log),
-                 data = data_itt, family = quasipoisson())
-  m7cat_i <- Glm(BT_30d_num ~ group * phos_preop_08_mmolL  +
+  m6cat_i <- Glm(BT_30d_num ~ group * phos_bl_8_mmolL + offset(obs_time_1_log),
+                 data = data, family = quasipoisson())
+  m7cat_i <- Glm(BT_30d_num ~ group * phos_preop_8_mmolL  +
                    offset(obs_time_1_log), 
-                 data = data_itt, family = quasipoisson())
-  # anova(m3cat_i) No interaction
-  # anova(m4cat_i) No interaction
+                 data = data, family = quasipoisson())
+  # anova(m3cat_i) # No interaction
+  # anova(m4cat_i) # No interaction
 
-  m6cat <- glm(BT_30d_num ~ group + phos_bl_08_mmolL + offset(obs_time_1_log),
-               data = data_itt, family = quasipoisson(link = "log"))
-  m7cat <- glm(BT_30d_num ~ group + phos_preop_08_mmolL + offset(obs_time_1_log),
-               data = data_itt, family = quasipoisson(link = "log"))
+  m6cat <- glm(BT_30d_num ~ group + phos_bl_8_mmolL + offset(obs_time_1_log),
+               data = data, family = quasipoisson(link = "log"))
+  m7cat <- glm(BT_30d_num ~ group + phos_preop_8_mmolL + offset(obs_time_1_log),
+               data = data, family = quasipoisson(link = "log"))
   
-  tab_model(m6cat, m7cat)
+ # tab_model(m6cat, m7cat)
 
 ```
+
+
+```{r}
+
+  vars <- c("phos_preop_8_mmolL", "phos_bl_8_mmolL", "phos_preop_65_mmolL",
+            "phos_bl_65_mmolL")
+
+  map2_dfr(vars, rep("BT_30d_num", times = length(vars)), sub_sum_2_qp) %>% 
+    kable()
+
+```
+
+Effects are IRRs from a quasipossion model. There aren't enough observations in the arm-specific low phosphate groups at baseline to estimate those subgroup specific treatment effects, which is why the estimates are so extreme. LRT P values are for the likelihood ratio test of the overall interaction. 
 
 
 ## Length of hospital stay
@@ -487,7 +491,7 @@ Modeled with linear regression on log-transformed hospital length of stay.
 
 ```{r}
 
-# hist(log(data_itt$hosp_stay))
+# hist(log(data$hosp_stay))
 
 ```
 
@@ -495,17 +499,17 @@ Modeled with linear regression on log-transformed hospital length of stay.
 
   m9 <- ols(
     log(hosp_stay) ~ group * rcs(mc(phos_bl_mmolL), 4),
-    data = data_itt
+    data = data
     )
 
   m10 <- ols(
     log(hosp_stay) ~ group * rcs(mc(phos_preop_mmolL), 4), 
-    data = data_itt
+    data = data
     )
   
   m11 <- ols(
     log(hosp_stay) ~ group * rcs(mc(phos_chg_mmolL), 4),
-    data = data_itt
+    data = data
     )
   
   tests <- bind_rows(
@@ -521,10 +525,10 @@ Modeled with linear regression on log-transformed hospital length of stay.
   off <- setNames(list(NA), c("obs_time_1_log"))
 
   mn1 <- with(
-    filter(data_itt, !is.na(phos_bl_mmolL)), 
+    filter(data, !is.na(phos_bl_mmolL)), 
     mean(log(hosp_stay), na.rm = TRUE)
     )
-  n1 <- nrow(filter(data_itt, !is.na(phos_bl_mmolL) & !is.na(hosp_stay)))
+  n1 <- nrow(filter(data, !is.na(phos_bl_mmolL) & !is.na(hosp_stay)))
 
   g1 <- ggplot(Predict(m9, phos_bl_mmolL, group)) +
     ylab("log(hospital length of stay (days))") +
@@ -538,10 +542,10 @@ Modeled with linear regression on log-transformed hospital length of stay.
     ggtitle("", subtitle = paste0("n = ", n1, "; LRT p = ", tests$P[1])) 
 
   mn2 <- with(
-    filter(data_itt, !is.na(phos_preop_mmolL)), 
+    filter(data, !is.na(phos_preop_mmolL)), 
     mean(log(hosp_stay), na.rm = TRUE)
     )
-  n2 <- nrow(filter(data_itt, !is.na(phos_preop_mmolL) & !is.na(hosp_stay)))
+  n2 <- nrow(filter(data, !is.na(phos_preop_mmolL) & !is.na(hosp_stay)))
   g2 <- ggplot(Predict(m10, phos_preop_mmolL, group)) +
     ylab("") +
     xlab("Pre-op phosphate (mmol/L)") +
@@ -555,10 +559,10 @@ Modeled with linear regression on log-transformed hospital length of stay.
     ggtitle("", subtitle = paste0("n = ", n2, "; LRT p = ", tests$P[2]))
 
   mn3 <- with(
-    filter(data_itt, !is.na(phos_chg_mmolL)), 
+    filter(data, !is.na(phos_chg_mmolL)), 
     mean(log(hosp_stay), na.rm = TRUE)
     )
-  n3 <- nrow(filter(data_itt, !is.na(phos_chg_mmolL) & !is.na(hosp_stay)))
+  n3 <- nrow(filter(data, !is.na(phos_chg_mmolL) & !is.na(hosp_stay)))
   g3 <- ggplot(Predict(m11, phos_chg_mmolL, group)) +
     ylab("") +
     xlab("Change in phosphate (mmol/L)") +
@@ -579,19 +583,61 @@ Modeled with linear regression on log-transformed hospital length of stay.
 
 ```{r}
 
-  m9cat_i  <- ols(log(hosp_stay) ~ group * phos_bl_08_mmolL, data = data_itt)
-  m10cat_i <- ols(log(hosp_stay) ~ group * phos_preop_08_mmolL, data = data_itt)
-  # anova(m3cat_i) No interaction
-  # anova(m4cat_i) No interaction
+  m9cat_i  <- ols(log(hosp_stay) ~ group * phos_bl_8_mmolL, data = data)
+  m10cat_i <- ols(log(hosp_stay) ~ group * phos_preop_8_mmolL, data = data)
+  # anova(m3cat_i) # No interaction
+  # anova(m4cat_i) # No interaction
+    # tab_model(m9cat_i, m10cat_i)
 
-  m9cat <- lm(log(hosp_stay) ~ group + phos_bl_08_mmolL,
-               data = data_itt)
-  m10cat <- lm(log(hosp_stay) ~ group + phos_preop_08_mmolL,
-               data = data_itt)
+
+  m9cat <- lm(log(hosp_stay) ~ group + phos_bl_8_mmolL,
+               data = data)
+  m10cat <- lm(log(hosp_stay) ~ group + phos_preop_8_mmolL,
+               data = data)
   
-  tab_model(m9cat, m10cat)
+  # tab_model(m9cat, m10cat)
 
 ```
+
+```{r}
+
+  vars <- c("phos_preop_8_mmolL", "phos_bl_8_mmolL", "phos_preop_65_mmolL",
+            "phos_bl_65_mmolL")
+
+  map2_dfr(vars, rep("hosp_stay", times = length(vars)), sub_sum_log_lin) %>% 
+    kable()
+
+```
+
+Effects are ratios of geometric means from log-linear models. LRT P values are for the likelihood ratio test of the overall interaction. 
+
+There is a relatively small p-value (0.04) for the treatment by pre-op very low phosphate (<65mmolL) interaction. The nature of the interaction suggests that among patients with very low pre-op phosphate, length of stay was longer in the active arm compared to patients in the placebo arm. Here is a plot of those data. 
+
+Figure: Distribution of log(hospital stay) in patients with very low pre-op phosphorous levels (< 0.65)
+
+```{r}
+
+  filter(data, phos_preop_65_mmolL == levels(data$phos_preop_65_mmolL)[2]) %>%
+  ggplot(aes(x = log(hosp_stay), fill = group)) +
+    geom_histogram() +
+    facet_wrap(~group, ncol = 1) +
+    xlim(c(0, 5))
+
+```
+
+So you can see that there are very few in the placebo group with phosphorous this low (since they didn't receive any iron supplementation), so this is very likely a spurious result. You can also see this between arm difference in the plot of the continuous interaction above, and of course the p-value for the same interaction, but modeled continuously, wasn't noteworthy.   
+
+Here are the data in the entire study for comparison. 
+
+```{r}
+
+  ggplot(data, aes(x = log(hosp_stay), fill = group)) +
+    geom_histogram() +
+    facet_wrap(~group, ncol = 1) +
+    xlim(c(0, 5))
+
+```
+
 
 ## Length of ITU stay
 
@@ -601,8 +647,11 @@ Modeled with quasi-Poisson regression.
 
 ```{r}
 
-# hist(log(data_itt$itu_stay))
-# hist(data_itt$itu_stay)
+# hist(log(data$itu_stay))
+# hist(data$itu_stay)
+
+# hist(log(data$hosp_stay))
+# hist(data$hosp_stay)
 
 ```
 
@@ -610,17 +659,17 @@ Modeled with quasi-Poisson regression.
 
   m12 <- Glm(
     itu_stay ~ group * rcs(mc(phos_bl_mmolL), 4),
-    family = quasipoisson(), data = data_itt
+    family = quasipoisson(), data = data
     )
 
   m13 <- Glm(
     itu_stay ~ group * rcs(mc(phos_preop_mmolL), 4), 
-    family = quasipoisson(), data = data_itt
+    family = quasipoisson(), data = data
     )
   
   m14 <- Glm(
     itu_stay ~ group * rcs(mc(phos_chg_mmolL), 4), 
-    family = quasipoisson(), data = data_itt
+    family = quasipoisson(), data = data
     )
   
   tests <- bind_rows(
@@ -636,10 +685,10 @@ Modeled with quasi-Poisson regression.
 
 
   mn1 <- with(
-    filter(data_itt, !is.na(phos_bl_mmolL)), 
+    filter(data, !is.na(phos_bl_mmolL)), 
     log(mean(itu_stay, na.rm = TRUE))
     )
-  n1 <- nrow(filter(data_itt, !is.na(phos_bl_mmolL) & !is.na(itu_stay)))
+  n1 <- nrow(filter(data, !is.na(phos_bl_mmolL) & !is.na(itu_stay)))
   g1 <- ggplot(Predict(m12, phos_bl_mmolL, group)) +
     ylab("log(ITU stay)") +
     xlab("Baseline phosphate (mmol/L)") +
@@ -652,10 +701,10 @@ Modeled with quasi-Poisson regression.
     ggtitle("", subtitle = paste0("n = ", n1, "; LRT p = ", tests$P[1])) 
 
   mn2 <- with(
-    filter(data_itt, !is.na(phos_preop_mmolL)), 
+    filter(data, !is.na(phos_preop_mmolL)), 
     log(mean(itu_stay, na.rm = TRUE))
          ) 
-  n2 <- nrow(filter(data_itt, !is.na(phos_preop_mmolL) & !is.na(itu_stay)))
+  n2 <- nrow(filter(data, !is.na(phos_preop_mmolL) & !is.na(itu_stay)))
   g2 <- ggplot(Predict(m13, phos_preop_mmolL, group)) +
     ylab("") +
     xlab("Pre-op phosphate (mmol/L)") +
@@ -669,10 +718,10 @@ Modeled with quasi-Poisson regression.
     ggtitle("", subtitle = paste0("n = ", n2, "; LRT p = ", tests$P[2]))
 
   mn3 <- with(
-    filter(data_itt, !is.na(phos_chg_mmolL)), 
+    filter(data, !is.na(phos_chg_mmolL)), 
     log(mean(itu_stay, na.rm = TRUE))
     ) 
-  n3 <- nrow(filter(data_itt, !is.na(phos_chg_mmolL) & !is.na(itu_stay)))
+  n3 <- nrow(filter(data, !is.na(phos_chg_mmolL) & !is.na(itu_stay)))
   g3 <- ggplot(Predict(m14, phos_chg_mmolL, group)) +
     ylab("") +
     xlab("Change in phosphate (mmol/L)") +
@@ -693,33 +742,46 @@ Modeled with quasi-Poisson regression.
 
 ```{r}
 
-  m12cat_i <- Glm(itu_stay ~ group * phos_bl_08_mmolL,
-                 data = data_itt, family = quasipoisson())
-  m13cat_i <- Glm(itu_stay ~ group * phos_preop_08_mmolL, 
-                 data = data_itt, family = quasipoisson())
-  # anova(m12cat_i) No interaction
-  # anova(m13cat_i) No interaction
+  m12cat_i <- Glm(itu_stay ~ group * phos_bl_8_mmolL,
+                 data = data, family = quasipoisson())
+  m13cat_i <- Glm(itu_stay ~ group * phos_preop_8_mmolL, 
+                 data = data, family = quasipoisson())
+  # anova(m12cat_i) # No interaction
+  # anova(m13cat_i) # No interaction
 
-  m12cat <- glm(itu_stay ~ group + phos_bl_08_mmolL,
-               data = data_itt, family = quasipoisson(link = "log"))
-  m13cat <- glm(itu_stay ~ group + phos_preop_08_mmolL,
-               data = data_itt, family = quasipoisson(link = "log"))
+  m12cat <- glm(itu_stay ~ group + phos_bl_8_mmolL,
+               data = data, family = quasipoisson(link = "log"))
+  m13cat <- glm(itu_stay ~ group + phos_preop_8_mmolL,
+               data = data, family = quasipoisson(link = "log"))
   
-  tab_model(m12cat, m13cat)
+  # tab_model(m12cat, m13cat)
 
 ```
+
+```{r}
+
+  vars <- c("phos_preop_8_mmolL", "phos_bl_8_mmolL", "phos_preop_65_mmolL",
+            "phos_bl_65_mmolL")
+
+  map2_dfr(vars, rep("itu_stay", times = length(vars)), sub_sum_2_qp) %>% 
+    kable()
+
+```
+
+Effects are IRRs from a quasipossion model. There aren't enough observations in the arm-specific low phosphate groups at baseline to estimate those subgroup specific treatment effects, which is why the estimates are so extreme. LRT P values are for the likelihood ratio test of the overall interaction. 
+
 
 ## Postoperative complications (grade 3+)
 
 Modeled with logistic regression
 
-### Continious phosphate
+### Continuous phosphate
 
 ```{r}
 
-  m15 <- lrm(post_op_comp3 ~ group * rcs(phos_bl_mmolL, 4), data = data_itt)
-  m16 <- lrm(post_op_comp3 ~ group * rcs(phos_preop_mmolL, 4), data = data_itt)
-  m17 <- lrm(post_op_comp3 ~ group * rcs(phos_chg_mmolL, 4), data = data_itt)
+  m15 <- lrm(post_op_comp3 ~ group * rcs(phos_bl_mmolL, 4), data = data)
+  m16 <- lrm(post_op_comp3 ~ group * rcs(phos_preop_mmolL, 4), data = data)
+  m17 <- lrm(post_op_comp3 ~ group * rcs(phos_chg_mmolL, 4), data = data)
 
 ```
 
@@ -737,7 +799,7 @@ Modeled with logistic regression
 ```{r}
 
   t1 <- with(
-    filter(data_itt, !is.na(phos_bl_mmolL) & !is.na(post_op_comp3)), 
+    filter(data, !is.na(phos_bl_mmolL) & !is.na(post_op_comp3)), 
     table(post_op_comp3)
     )
 
@@ -756,7 +818,7 @@ Modeled with logistic regression
 
   
   t2 <- with(
-    filter(data_itt, !is.na(phos_preop_mmolL) & !is.na(post_op_comp3)),
+    filter(data, !is.na(phos_preop_mmolL) & !is.na(post_op_comp3)),
     table(post_op_comp3)
     )
 
@@ -775,7 +837,7 @@ Modeled with logistic regression
 
   
   t3 <- with(
-    filter(data_itt, !is.na(phos_chg_mmolL) & !is.na(post_op_comp3)), 
+    filter(data, !is.na(phos_chg_mmolL) & !is.na(post_op_comp3)), 
     table(post_op_comp3)
     )
 
@@ -802,19 +864,31 @@ Modeled with logistic regression
 
 ```{r}
 
-  m15cat_i <- lrm(post_op_comp3 ~ group * phos_bl_08_mmolL, data = data_itt)
-  m16cat_i <- lrm(post_op_comp3 ~ group * phos_preop_08_mmolL, data = data_itt)
-  # anova(m15cat_i) No interaction
-  # anova(m16cat_i) No interaction
+  m15cat_i <- lrm(post_op_comp3 ~ group * phos_bl_8_mmolL, data = data)
+  m16cat_i <- lrm(post_op_comp3 ~ group * phos_preop_8_mmolL, data = data)
+  # anova(m15cat_i) # No interaction
+  # anova(m16cat_i) # No interaction
 
-  m15cat <- lrm(post_op_comp3 ~ group + phos_bl_08_mmolL, data = data_itt)
-  m16cat <- lrm(post_op_comp3 ~ group + phos_preop_08_mmolL, data = data_itt)
+  m15cat <- lrm(post_op_comp3 ~ group + phos_bl_8_mmolL, data = data)
+  m16cat <- lrm(post_op_comp3 ~ group + phos_preop_8_mmolL, data = data)
   
-  tab_model(m15cat, m16cat)
+  # tab_model(m15cat, m16cat)
   # anova(m15cat) 
   # anova(m16cat)
 
 ```
+
+```{r}
+
+  vars <- c("phos_preop_8_mmolL", "phos_bl_8_mmolL", "phos_preop_65_mmolL")
+
+  map2_dfr(vars, rep("post_op_comp3", times = length(vars)), sub_sum_1_or) %>% 
+    kable()
+  
+
+```
+
+Effects are ORs from logistic regression models. There aren't enough observations in some arm-specific low phosphate groups to estimate those subgroup specific treatment effects which is why the estimates are so extreme. There were no complications in either arm among those with very low phosphorous values (<0.65 mmolL) at baseline, so those figures are omitted from the table above. LRT P values are for the likelihood ratio test of the overall interaction. 
 
 
 # End matter
@@ -827,7 +901,7 @@ Due to skewness due to floor effects of phosphate measurements, we also estimima
 
 ```{r}
 
-  select(data_itt, identifier, group, phos_bl_mmolL, phos_preop_mmolL) %>%
+  select(data, identifier, group, phos_bl_mmolL, phos_preop_mmolL) %>%
     gather(time, phosphate, phos_bl_mmolL, phos_preop_mmolL) %>% 
     mutate(time = factor(time, labels = c("Baseline", "Pre-op"))) %>%
   ggplot(aes(x = time, y = log10(phosphate))) +
@@ -857,31 +931,17 @@ Due to skewness due to floor effects of phosphate measurements, we also estimima
 ```{r}
 
   m9 <- lm(log10(phos_preop_mmolL) ~ group + mc(log10(phos_bl_mmolL)), 
-           data = data_itt)
+           data = data)
 
   tab_model(m2)
 
 ```
 
 
-
-## Regression diagnostics
-
-### Baseline adjusted regression of pre-op phosphate on tx arm (m1)
-
 ```{r}
 
-  autoplot(m1, which = 1:6, ncol = 3, size = 0.5, label.size = 3) +
-    theme(plot.title = element_text(size = 10)) 
-
-```
-
-### Baseline adjusted regression of log10 pre-op phosphate on tx arm (m2)
-
-```{r}
-
-  autoplot(m9, which = 1:6, ncol = 3, size = 0.5, label.size = 3) +
-    theme(plot.title = element_text(size = 10)) 
+  # autoplot(m1, which = 1:6, ncol = 3, size = 0.5, label.size = 3) +
+  #   theme(plot.title = element_text(size = 10)) 
 
 ```
 

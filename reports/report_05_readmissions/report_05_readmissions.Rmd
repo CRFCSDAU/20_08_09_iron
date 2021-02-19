@@ -42,19 +42,108 @@ output:
   
 ```
 
-## Complications, readmissions and infection
+# Complications, readmissions and infection
 
-Better characterization of complications, readmissions and infection
+Better characterization of complications, readmission and infection
 In a nutshell, there is a lot more information on these outcomes in the trial dataset that merits more detailed description. 
 
+## Readmission for complications (main paper)
+
 ```{r}
-names(data)[199:204]
+
+  bind_rows(
+    counts_pct("comp8wk", data), 
+    total_units("ncomp8wk", data), 
+    counts_pct("comp6m", data), 
+    total_units("ncomp6m", data)
+    ) %>% 
+  bind_cols(data_frame(var = c("8w n(%)", "Total count", "6m n(%)", 
+                               "Total count"))) %>%
+  select(var, everything()) %>%
+  kable(row.names = FALSE)
+
+  m1 <- glm(comp8wk ~ group, data = data, 
+            family = binomial(link = "log"), 
+            start = c(-1, 0))
+  
+  m2 <- glm.nb(ncomp8wk ~ group + offset(log(os8wk)), data = data) 
+  
+  m3 <- glm(comp6m ~ group, data = data, 
+              family = binomial(link = "log"), 
+              start = c(-1, 0))
+  
+  m4 <- glm.nb(ncomp6m ~ group + offset(log(os6m)), data = data) 
+
 ```
+
+The model results at 8 weeks were RR `r pull_ci(m1)` for any complications, and IRR `r pull_ci(m2)` for the number of complications. The model results at 6 months were `r pull_ci(m3)` for any complications, and `r pull_ci(m4)` for the number of complications. **NOTE**: This all matches, expect the final model result, which is just slightly off. 
+
+## Any readmissions (not previously reported)
+
+```{r}
+
+  bind_rows(
+    counts_pct("readmission_8wk", data), 
+    counts_pct("readmission_6mo", data), 
+    ) %>% 
+  bind_cols(data_frame(var = c("8w n(%)", "6m n(%)"))) %>%
+  select(var, everything()) %>%
+  kable(row.names = FALSE)
+
+  m5 <- glm(readmission_8wk ~ group, data = data, 
+            family = binomial(link = "log"), 
+            start = c(-1, 0))
+  
+
+  m6 <- glm(readmission_6mo ~ group, data = data, 
+              family = binomial(link = "log"), 
+              start = c(-1, 0))
+  
+```
+
+The model results were RR `r pull_ci(m5)` for any complications at 8weeks, and RR `r pull_ci(m6)` at 6 months.
+
+
+## Postoperative grade 3+ complications (main paper)
+
+```{r}
+
+  counts_pct("post_op_comp3", data) %>%
+  bind_cols(data_frame(var = c("CD grade III or above to discharge"))) %>%
+  select(var, everything()) %>%
+  kable(row.names = FALSE)
+
+  m7 <- glm(post_op_comp3 ~ group, data = data, 
+            family = binomial(link = "log"), 
+            start = c(-1, 0))
+
+```
+
+The model result was `r pull_ci(m7)`. 
+
+
+## Postoperative worst grade complications (not previously reported)
+
+```{r}
+
+  counts_pct("post_op_comp", data) %>%
+  bind_cols(data_frame(var = c("Worst grade, to discharge"))) %>%
+  select(var, everything()) %>%
+  kable(row.names = FALSE)
+
+  m8 <- glm(post_op_comp ~ group, data = data, 
+            family = binomial(link = "log"), 
+            start = c(-1, 0))
+
+```
+
+The model result was `r pull_ci(m8)`. 
 
 
 
 
 ## Confirming days alive and out of hospital
+
 The median length of stay in each arm was ~ 9 days. Readmissions were substantially different, especially when looking at the actual number of days readmitted. There is a small concern that the existing calculation of the days alive and out of hospital doesn’t seem to match up with the large observed difference in total days readmitted, so this needs to be closely checked. 
 
 ## Optimal length of follow-up for days alive and out of hospital

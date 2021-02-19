@@ -9,6 +9,7 @@
   pull_ci <- function(model){
 
     require(broom)
+
     x <- tidy(model) %>%
       mutate(
         ul = round(exp(estimate + (1.96 * std.error)), 2),
@@ -19,6 +20,24 @@
       )
 
     return(x$effect[x$term == x$term[grepl("Active", x$term)]])
+  }
+
+  pull_ci_rms <- function(model){
+
+    x <- data_frame(
+      estimate = coefficients(model)["group=Active"],
+      std.error = summary(model)[1, "S.E."],
+      p.value = anova(model)["group", "P"]
+      ) %>%
+      mutate(
+        ul = round(exp(estimate + (1.96 * std.error)), 2),
+        ll = round(exp(estimate - (1.96 * std.error)), 2),
+        est = round(exp(estimate), 3),
+        effect = paste0(est, " (", ll, " to ", ul, ")", "; p = ",
+                        round(p.value, 2))
+      )
+
+    return(x$effect)
   }
 
 # Pull the active tx effect from a model without exponentiation ----
@@ -37,6 +56,25 @@
 
     return(x$effect[x$term == x$term[grepl("Active", x$term)]])
   }
+
+  pull_ci_2_rms <- function(model){
+
+    x <- data_frame(
+      estimate = coefficients(model)["group=Active"],
+      std.error = summary(model)[1, "S.E."],
+      p.value = anova(model)["group", "P"]
+    ) %>%
+      mutate(
+        ul = round(estimate + (1.96 * std.error), 2),
+        ll = round(estimate - (1.96 * std.error), 2),
+        est = round(estimate, 3),
+        effect = paste0(est, " (", ll, " to ", ul, ")", "; p = ",
+                        round(p.value, 2))
+      )
+
+    return(x$effect)
+  }
+
 
 
 # Create results tables for subgroup analyses with log binomial models ----
@@ -87,7 +125,7 @@
         active  = c(pull_tab(tab_1, out, 1, "Active"),
                     pull_tab(tab_1, out, 2, "Active")),
         effect = c(pull_ci(m1), pull_ci(m2)),
-        p = round(pv, 2)
+        "LRT P" =round(pv, 2)
       )
     }
 
@@ -130,7 +168,7 @@
                     pull_tab(tab_1, out, 2, "Active"),
                     pull_tab(tab_1, out, 3, "Active")),
         effect = c(pull_ci(m1), pull_ci(m2), pull_ci(m3)),
-        p = round(pv, 2)
+        "LRT P" =round(pv, 2)
       )
     }
 
@@ -173,7 +211,7 @@
         placebo = c(pull_means(1, "Placebo", var), pull_means(2, "Placebo", var)),
         active  = c(pull_means(1, "Active",  var), pull_means(2, "Active",  var)),
         effect = c(pull_ci(m1), pull_ci(m2)),
-        p = round(pv, 2)
+        "LRT P" =round(pv, 2)
       )
 
     }
@@ -211,7 +249,7 @@
                     pull_means(2, "Active",  var),
                     pull_means(3, "Active",  var)),
         effect = c(pull_ci(m1), pull_ci(m2), pull_ci(m3)),
-        p = round(pv, 2)
+        "LRT P" =round(pv, 2)
       )
 
     }
@@ -427,6 +465,334 @@
       select(var, everything()) %>%
       mutate(across(where(is.numeric), round, 2))
   }
+
+# subgroup effects using lrm (ORs) instead of binomial log link (RRs)
+
+  sub_sum_1_or <- function(var, out, ...){
+
+    require(rms)
+    require(Hmisc)
+
+    if(length(levels(data[[var]])) == 2){
+
+      # Get the basic table of outcomes by arm by subgroup
+      tab_1 <- table(data[[out]], data[[var]], data[["group"]])
+
+      # Model based estimate in subgroup 1
+      form_1 <- as.formula(paste0(out, " ~ ", "group"))
+      dta <- data[data[[var]] == levels(data[[var]])[1], ]
+      m1 <- lrm(form_1, data = dta)
+
+      # Model based estimate in subgroup 2
+      dta <- data[data[[var]] == levels(data[[var]])[2], ]
+      m2 <- lrm(form_1, data = dta)
+
+      # LRT p-value for the interaction test
+      form_2 <- as.formula(
+        paste0(out, " ~ ", "group + ", var, " + ", "group * ", var)
+      )
+      m3 <- lrm(form_2, data = data)
+      er <- try(anova(m3))
+      if("try-error" %in% class(er)){
+        pv <- "Error"
+      }else{
+        pv <- round(anova(m3)[2, "P"], 2)
+      }
+
+      # Put everything into a dataframe
+      out <- data_frame(
+        names  = paste(var, levels(data[[var]])),
+        placebo = c(pull_tab(tab_1, out, 1, "Placebo"),
+                    pull_tab(tab_1, out, 2, "Placebo")),
+        active  = c(pull_tab(tab_1, out, 1, "Active"),
+                    pull_tab(tab_1, out, 2, "Active")),
+        effect = c(pull_ci_rms(m1), pull_ci_rms(m2)),
+        "LRT P" = pv
+      )
+    }
+
+    if(length(levels(data[[var]])) == 3){
+
+      # Get the basic table of outcomes by arm by subgroup
+      tab_1 <- table(data[[out]], data[[var]], data[["group"]])
+
+      # Model based estimate in subgroup 1
+      form_1 <- as.formula(paste0(out, " ~ ", "group"))
+      dta <- data[data[[var]] == levels(data[[var]])[1], ]
+      m1 <- lrm(form_1, data = dta)
+
+      # Model based estimate in subgroup 2
+      dta <- data[data[[var]] == levels(data[[var]])[2], ]
+      m2 <- lrm(form_1, data = dta)
+
+      # Model based estimate in subgroup 3
+      dta <- data[data[[var]] == levels(data[[var]])[3], ]
+      m3 <- lrm(form_1, data = dta)
+
+      # LRT p-value for the interaction test
+      form_2 <- as.formula(
+        paste0(out, " ~ ", "group + ", var, " + ", "group * ", var)
+      )
+      m4 <- lrm(form_2, data = data)
+      er <- try(anova(m4))
+      if("try-error" %in% class(er)){
+        pv <- "Error"
+      }else{
+        pv <- round(anova(m3)[2, "P"], 2)
+      }
+
+      # Put everything into a dataframe
+      out <- data_frame(
+        names  = paste(var, levels(data[[var]])),
+        placebo = c(pull_tab(tab_1, out, 1, "Placebo"),
+                    pull_tab(tab_1, out, 2, "Placebo"),
+                    pull_tab(tab_1, out, 3, "Placebo")),
+        active  = c(pull_tab(tab_1, out, 1, "Active"),
+                    pull_tab(tab_1, out, 2, "Active"),
+                    pull_tab(tab_1, out, 3, "Active")),
+        effect = c(pull_ci_rms(m1), pull_ci_rms(m2), pull_ci_rms(m3)),
+        "LRT P" = pv
+      )
+    }
+
+    if(length(levels(data[[var]])) == 4){
+
+      # Get the basic table of outcomes by arm by subgroup
+      tab_1 <- table(data[[out]], data[[var]], data[["group"]])
+
+      # Model based estimate in subgroup 1
+      form_1 <- as.formula(paste0(out, " ~ ", "group"))
+      dta <- data[data[[var]] == levels(data[[var]])[1], ]
+      m1 <- lrm(form_1, data = dta)
+
+      # Model based estimate in subgroup 2
+      dta <- data[data[[var]] == levels(data[[var]])[2], ]
+      m2 <- lrm(form_1, data = dta)
+
+      # Model based estimate in subgroup 3
+      dta <- data[data[[var]] == levels(data[[var]])[3], ]
+      m3 <- lrm(form_1, data = dta)
+
+      # Model based estimate in subgroup 4
+      dta <- data[data[[var]] == levels(data[[var]])[4], ]
+      m3 <- lrm(form_1, data = dta)
+
+      # LRT p-value for the interaction test
+      form_2 <- as.formula(
+        paste0(out, " ~ ", "group + ", var, " + ", "group * ", var)
+      )
+      m5 <- lrm(form_2, data = data)
+      er <- try(anova(m5))
+      if("try-error" %in% class(er)){
+        pv <- "Error"
+      }else{
+        pv <- round(anova(m3)[2, "P"], 2)
+      }
+
+      # Put everything into a dataframe
+      out <- data_frame(
+        names  = paste(var, levels(data[[var]])),
+        placebo = c(pull_tab(tab_1, out, 1, "Placebo"),
+                    pull_tab(tab_1, out, 2, "Placebo"),
+                    pull_tab(tab_1, out, 3, "Placebo"),
+                    pull_tab(tab_1, out, 4, "Placebo")),
+        active  = c(pull_tab(tab_1, out, 1, "Active"),
+                    pull_tab(tab_1, out, 2, "Active"),
+                    pull_tab(tab_1, out, 3, "Active"),
+                    pull_tab(tab_1, out, 4, "Active")),
+        effect = c(pull_ci_rms(m1), pull_ci_rms(m2),
+                   pull_ci_rms(m3), pull_ci_rms(m4)),
+        "LRT P" = pv
+      )
+    }
+
+    return(out)
+
+  }
+
+  sub_sum_2_qp <- function(var, out, ...){
+
+    if(length(levels(data[[var]])) == 2){
+
+      # Model based estimate in subgroup 1
+      form_1 <- as.formula(paste0(out, " ~ ", "group + offset(log(obs_time_1))"))
+      dta <- data[data[[var]] == levels(data[[var]])[1], ]
+      m1 <- Glm(form_1, data = dta, family = quasipoisson(link = "log"))
+
+      # Model based estimate in subgroup 2
+      dta <- data[data[[var]] == levels(data[[var]])[2], ]
+      m2 <- Glm(form_1, data = dta, family = quasipoisson(link = "log"))
+
+      # LRT p-value for the interaction test
+      form_2 <- as.formula(
+        paste0(out, " ~ ", "group + ", var, " + ", "group * ", var,
+               " + offset(log(obs_time_1))")
+      )
+      m3 <- Glm(form_2, data = data, family = quasipoisson(link = "log"))
+
+      er <- try(anova(m3))
+      if("try-error" %in% class(er)){
+        pv <- "Error"
+      }else{
+        pv <- round(anova(m3)[2, "P"], 2)
+      }
+
+
+      # Put everything into a dataframe
+      out <- data_frame(
+        names  = paste(var, levels(data[[var]])),
+        placebo = c(pull_means(1, "Placebo", var), pull_means(2, "Placebo", var)),
+        active  = c(pull_means(1, "Active",  var), pull_means(2, "Active",  var)),
+        effect = c(pull_ci_rms(m1), pull_ci_rms(m2)),
+        "LRT P" =pv
+      )
+
+    }
+
+    if(length(levels(data[[var]])) == 3){
+
+      # Model based estimate in subgroup 1
+      form_1 <- as.formula(paste0(out, " ~ ", "group + offset(log(obs_time_1))"))
+      dta <- data[data[[var]] == levels(data[[var]])[1], ]
+      m1 <- Glm(form_1, data = dta, family = quasipoisson(link = "log"))
+
+      # Model based estimate in subgroup 2
+      dta <- data[data[[var]] == levels(data[[var]])[2], ]
+      m2 <- Glm(form_1, data = dta, family = quasipoisson(link = "log"))
+
+      # Model based estimate in subgroup 2
+      dta <- data[data[[var]] == levels(data[[var]])[3], ]
+      m3 <- Glm(form_1, data = dta, family = quasipoisson(link = "log"))
+
+      # LRT p-value for the interaction test
+      form_2 <- as.formula(
+        paste0(out, " ~ ", "group + ", var, " + ", "group * ", var,
+               " + offset(log(obs_time_1))")
+      )
+      m4 <- Glm(form_2, data = dta, family = quasipoisson(link = "log"))
+
+      er <- try(anova(m4))
+      if("try-error" %in% class(er)){
+        pv <- "Error"
+      }else{
+        pv <- round(anova(m4)[2, "P"], 2)
+      }
+
+      # Put everything into a dataframe
+      out <- data_frame(
+        names  = paste(var, levels(data[[var]])),
+        placebo = c(pull_means(1, "Placebo", var),
+                    pull_means(2, "Placebo", var),
+                    pull_means(3, "Placebo", var)),
+        active  = c(pull_means(1, "Active",  var),
+                    pull_means(2, "Active",  var),
+                    pull_means(3, "Active",  var)),
+        effect = c(pull_ci_rms(m1), pull_ci_rms(m2), pull_ci_rms(m3)),
+        "LRT P" =pv
+      )
+
+    }
+
+    if(length(levels(data[[var]])) == 4){
+
+      # Model based estimate in subgroup 1
+      form_1 <- as.formula(paste0(out, " ~ ", "group + offset(log(obs_time_1))"))
+      dta <- data[data[[var]] == levels(data[[var]])[1], ]
+      m1 <- Glm(form_1, data = dta, family = quasipoisson(link = "log"))
+
+      # Model based estimate in subgroup 2
+      dta <- data[data[[var]] == levels(data[[var]])[2], ]
+      m2 <- Glm(form_1, data = dta, family = quasipoisson(link = "log"))
+
+      # Model based estimate in subgroup 3
+      dta <- data[data[[var]] == levels(data[[var]])[3], ]
+      m3 <- Glm(form_1, data = dta, family = quasipoisson(link = "log"))
+
+      # Model based estimate in subgroup 4
+      dta <- data[data[[var]] == levels(data[[var]])[4], ]
+      m4 <- Glm(form_1, data = dta, family = quasipoisson(link = "log"))
+
+      # LRT p-value for the interaction test
+      form_2 <- as.formula(
+        paste0(out, " ~ ", "group + ", var, " + ", "group * ", var,
+               " + offset(log(obs_time_1))")
+      )
+      m5 <- Glm(form_2, data = dta, family = quasipoisson(link = "log"))
+
+      er <- try(anova(m5))
+      if("try-error" %in% class(er)){
+        pv <- "Error"
+      }else{
+        pv <- round(anova(m5)[2, "P"], 2)
+      }
+
+      # Put everything into a dataframe
+      out <- data_frame(
+        names  = paste(var, levels(data[[var]])),
+        placebo = c(pull_means(1, "Placebo", var),
+                    pull_means(2, "Placebo", var),
+                    pull_means(3, "Placebo", var),
+                    pull_means(4, "Placebo", var)),
+        active  = c(pull_means(1, "Active",  var),
+                    pull_means(2, "Active",  var),
+                    pull_means(3, "Active",  var),
+                    pull_means(4, "Active",  var)),
+        effect = c(pull_ci_rms(m1), pull_ci_rms(m2),
+                   pull_ci_rms(m3), pull_ci_rms(m4)),
+        "LRT P" =pv
+      )
+
+    }
+
+
+    return(out)
+
+  }
+
+
+  sub_sum_log_lin <- function(var, out, ...){
+
+    if(length(levels(data[[var]])) == 2){
+
+      # Model based estimate in subgroup 1
+      form_1 <- as.formula(paste0("log(", out, ")", " ~ ", "group"))
+      dta <- data[data[[var]] == levels(data[[var]])[1], ]
+      m1 <- ols(form_1, data = dta)
+
+      # Model based estimate in subgroup 2
+      dta <- data[data[[var]] == levels(data[[var]])[2], ]
+      m2 <- ols(form_1, data = dta)
+
+      # LRT p-value for the interaction test
+      form_2 <- as.formula(
+        paste0("log(", out, ")", " ~ ", "group + ", var, " + ", "group * ", var)
+      )
+      m3 <- ols(form_2, data = data)
+
+      er <- try(anova(m3))
+      if("try-error" %in% class(er)){
+        pv <- "Error"
+      }else{
+        pv <- round(anova(m3)[2, "P"], 2)
+      }
+
+
+      # Put everything into a dataframe
+      out <- data_frame(
+        names  = paste(var, levels(data[[var]])),
+        placebo = c(pull_means(1, "Placebo", var), pull_means(2, "Placebo", var)),
+        active  = c(pull_means(1, "Active",  var), pull_means(2, "Active",  var)),
+        effect = c(pull_ci_rms(m1), pull_ci_rms(m2)),
+        "LRT P" = pv
+      )
+
+    }
+
+    return(out)
+
+  }
+
+
 
 
 # Others ----

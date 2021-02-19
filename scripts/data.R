@@ -19,13 +19,13 @@
 
   # Save labels
 
-  label.list <- list()
+  label_list <- list()
 
   for (i in seq_along(data)){
-    label.list[[i]] <- attributes(data[[i]])$label
+    label_list[[i]] <- attributes(data[[i]])$label
   }
 
-  label.list <- unlist(label.list)
+  label_list <- unlist(label_list)
 
 
   # Remove labelled class from Haven
@@ -325,6 +325,42 @@
   data$phos_bl_mgdl <- as.numeric(data$phos_bl_mgdl)
   data$phos_preop_mgdl <- as.numeric(data$phos_preop_mgdl)
 
+  levs <- c("0.8+ mmol/L", "< 0.8 mmol/L")
+  levs2 <- c("Normal (0.80+)", "Mild [0.65 - 0.80)", "Moderate [.32 - 0.65)",
+             "Severe (< 0.32)")
+  levs3 <- c("0.65+ mmol/L", "< 0.65 mmol/L")
+
+  data <- data %>%
+    arrange(identifier) %>%
+    mutate(
+      phos_chg_mmolL = phos_preop_mmolL - phos_bl_mmolL,
+      phos_bl_8_mmolL = factor(ifelse(
+        phos_bl_mmolL < 0.8, "< 0.8 mmol/L", "0.8+ mmol/L"
+      ), levels = levs),
+      phos_preop_8_mmolL = factor(ifelse(
+        phos_preop_mmolL < 0.8, "< 0.8 mmol/L", "0.8+ mmol/L"
+      ), levels = levs),
+      phos_bl_65_mmolL = factor(ifelse(
+        phos_bl_mmolL < 0.65, "< 0.65 mmol/L", "0.65+ mmol/L"
+      ), levels = levs3),
+      phos_preop_65_mmolL = factor(ifelse(
+        phos_preop_mmolL < 0.65, "< 0.65 mmol/L", "0.65+ mmol/L"
+      ), levels = levs3),
+      phos_bl_cat = factor(case_when(
+        phos_bl_mmolL >= 0.8                          ~ 1,
+        phos_bl_mmolL <  0.8  & phos_bl_mmolL >= 0.65 ~ 2,
+        phos_bl_mmolL <  0.65 & phos_bl_mmolL >= 0.32 ~ 3,
+        phos_bl_mmolL <  0.32                         ~ 4,
+      ), levels = 1:4, labels = levs2),
+      phos_preop_cat = factor(case_when(
+        phos_preop_mmolL >= 0.8                             ~ 1,
+        phos_preop_mmolL <  0.8  & phos_preop_mmolL >= 0.65 ~ 2,
+        phos_preop_mmolL <  0.65 & phos_preop_mmolL >= 0.32 ~ 3,
+        phos_preop_mmolL <  0.32                            ~ 4,
+      ), levels = 1:4, labels = levs2)
+    )
+
+
 
 # Add surgery details ----------------------------------------------------------
 
@@ -363,6 +399,15 @@
 
   # nrow(filter(data, is.na(surgtypes)))
   # 26 patients w/o this info bc they didn't have surgery
+
+  label_list_ops <- list()
+
+  for (i in seq_along(ops)){
+    label_list_ops[[i]] <- attributes(data[[i]])$label
+  }
+
+  label_list_ops <- unlist(label_list_ops)
+
 
 
 # Large BT flags ---------------------------------------------------------------
