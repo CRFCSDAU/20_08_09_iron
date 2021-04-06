@@ -361,6 +361,43 @@ Modeled with logistic regression
 Effects are ORs from logistic regression models. There aren't enough observations in some arm-specific low phosphate groups to estimate those subgroup specific treatment effects which is why the estimates are so extreme. There were no complications in either arm among those with very low phosphorous values (<0.65 mmolL) at baseline, so those figures are omitted from the table above. LRT P values are for the likelihood ratio test of the overall interaction. 
 
 
+# Within active arm relationships between phosphate and outcomes
+
+AE numbers, ICU stay y/n/ and days, Hospital LOS, Complications, Readmission
+
+
+
+
+
+
+
+
+|Variable                    |Observations |Total       |< 0.8 mmol/L |0.8+ mmol/L |Effects                        |
+|:---------------------------|:------------|:-----------|:------------|:-----------|:------------------------------|
+|LOS ITU (days)              |193          |2 [0, 3]    |1 [0, 4]     |2 [0, 3]    |0.938 (0.57 to 1.53); p = 0.8  |
+|Any ITU stay                |193          |            |             |            |0.719 (0.36 to 1.42); p = 0.34 |
+|No                          |             |58 (30.1%)  |18 (35.3%)   |40 (28.2%)  |                               |
+|Yes                         |             |135 (69.9%) |33 (64.7%)   |102 (71.8%) |                               |
+|LOS hospital (days)         |194          |9.5 [7, 14] |10 [7, 14]   |9 [7, 14]   |1.04 (0.8 to 1.34); p = 0.76   |
+|Grade 3+ complications      |193          |            |             |            |1.628 (0.61 to 4.34); p = 0.33 |
+|None/<Grade III             |             |173 (89.6%) |43 (86%)     |130 (90.9%) |                               |
+|Grade III+                  |             |20 (10.4%)  |7 (14%)      |13 (9.1%)   |                               |
+|Any readmission by 8 weeks  |191          |            |             |            |0.663 (0.29 to 1.5); p = 0.32  |
+|No                          |             |146 (76.4%) |40 (81.6%)   |106 (74.6%) |                               |
+|Yes                         |             |45 (23.6%)  |9 (18.4%)    |36 (25.4%)  |                               |
+|Any readmission by 6 months |186          |            |             |            |0.684 (0.34 to 1.38); p = 0.29 |
+|No                          |             |113 (60.8%) |31 (67.4%)   |82 (58.6%)  |                               |
+|Yes                         |             |73 (39.2%)  |15 (32.6%)   |58 (41.4%)  |                               |
+
+
+
+
+
+
+
+
+
+
 # End matter
 
 ## Estimated effect of iron on log(phosphate)
@@ -369,7 +406,7 @@ Due to skewness due to floor effects of phosphate measurements, we also estimima
 
 **Figure: Distributions of baseline and pre-operative phosphate values (log10(mmol/L)) by study arm.**
 
-![](report_04_phosphate_files/figure-html/unnamed-chunk-36-1.png)<!-- -->
+![](report_04_phosphate_files/figure-html/unnamed-chunk-39-1.png)<!-- -->
 
 
 **Table: Effect of iron on phosphate levels (log10(mmol/L)) estimated by linear regression with adjustment for baseline phosphate.**
@@ -421,7 +458,7 @@ Due to skewness due to floor effects of phosphate measurements, we also estimima
 
 ```
 ## 
-## System: Windows 10 x64 build 18363
+## System: Windows 10 x64 build 19042
 ## Nodename: DESKTOP-JKQ7LTN, User: Darren
 ## Total Memory: 16168 MB
 ## 

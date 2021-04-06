@@ -409,6 +409,10 @@
   label_list_ops <- unlist(label_list_ops)
 
 
+# Any ITU ----------------------------------------------------------------------
+
+  data$any_itu <- factor(ifelse(data$itu_stay > 0, "Yes", "No"))
+
 
 # Large BT flags ---------------------------------------------------------------
 
@@ -438,10 +442,51 @@
   # table(data$primary_6mo)
   # table(data$large_BT_6mo)
 
+# EPO/Hepcidin -----------------------------------------------------------------
+
+  epo <- read_excel(
+    "data/preventtRandomNoLinkLW3.xlsx", skip = 1, sheet = 2
+    ) %>%
+    clean_names() %>%
+    select(
+      identifier = pat_id,
+      epo_bl_miuml = baseline_59, epo_preop_miuml = pre_operative_60,
+      hepc_bl_ngml = baseline_61, hepc_preop_ngml = pre_operative_62
+      )
+
+  epo$epo_bl_miuml <- round(as.numeric(epo$epo_bl_miuml), 2)
+  epo$epo_preop_miuml <- round(as.numeric(epo$epo_preop_miuml), 2)
+
+
+  epo$hepc_bl_ngml[grepl(" 81", epo$hepc_bl_ngml)] <- 81 # Capped at limit
+  epo$hepc_bl_ngml[grepl(" 0.21", epo$hepc_bl_ngml)] <- 21 # Capped at limit
+  epo$hepc_bl_ngml <- round(as.numeric(epo$hepc_bl_ngml), 2)
+
+  epo$hepc_preop_ngml[grepl(" 81", epo$hepc_preop_ngml)] <- 81 # Capped at limit
+  epo$hepc_preop_ngml[grepl(" 0.21", epo$hepc_preop_ngml)] <- 21 # Capped at limit
+  epo$hepc_preop_ngml <- round(as.numeric(epo$hepc_preop_ngml), 2)
+
+
+  data <- left_join(
+    data,
+    epo,
+    by = "identifier"
+  ) %>%
+    mutate(
+      hepc_preop_low = factor(
+        ifelse(hepc_preop_ngml < 20, "<20 ng/ml", "20+ ng/ml"),
+        levels = c("20+ ng/ml", "<20 ng/ml")
+        ),
+      hepc_bl_low = factor(
+        ifelse(hepc_bl_ngml < 20, "<20 ng/ml", "20+ ng/ml"),
+        levels = c("20+ ng/ml", "<20 ng/ml")
+      )
+    )
+
 # Other datasets ---------------------------------------------------------------
 
   poms <- read_dta("data/PREVENTT POMS 20191203.dta")
-  aes <- read_dta("data/adverse_events.dta")
+  aes <- read_dta("data/adverse_events.dta") # QUERY can't open this
 
 
 # Things I still need ----------------------------------------------------------
@@ -451,7 +496,7 @@
 
 # Save data --------------------------------------------------------------------
 
-  save(data, label.list, hb_long, poms, aes, ops, file = "data/data.RData")
+  save(data, label_list, hb_long, poms, aes, ops, file = "data/data.RData")
 # rm(list = ls())
 # load("data.RData")
 

@@ -1,0 +1,979 @@
+---
+title: 'EPO/Hepcidin analysis'
+author: ''
+date: ''
+output: 
+  html_document:
+    df_print: paged
+    keep_md: true
+  word_document:
+    reference_docx: style.1.docx
+---
+
+```{r setup, include = FALSE}
+
+  knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, 
+                        fig.width  = 6 * 1.67, fig.height = 6)
+
+  proj <- rprojroot::find_rstudio_root_file()
+  knitr::opts_knit$set(root.dir = proj)
+  
+  load(paste0(proj, "/data/data.RData"))
+  
+  source(paste0(proj, "/scripts/functions.R"))
+
+  # load("data/data.RData")
+  # 
+  # source("scripts/functions.R")
+  
+  library(logbin)
+  library(MASS)
+  library(descr)
+  library(tidyverse)
+  library(viridis)
+  library(knitr)
+  library(rms)
+  library(Hmisc)
+  library(sjPlot)
+  library(ggfortify)
+  library(patchwork)
+  
+  select <- dplyr::select # Deals with conflict between dplyr and MASS with select
+  
+```
+
+```{r}
+  
+  data <- select(data, - time_ecg, - ltfu_pre8) %>% # ITT samples
+    filter(!is.na(primary_30d))
+
+```
+
+```{r}
+  
+  t1 <-       table(is.na(data$epo_bl_miuml))
+  t2 <-                            table(is.na(data$epo_preop_miuml))
+  t3 <- with(data, table(is.na(epo_bl_miuml), is.na(epo_preop_miuml)))
+  
+  t4 <-       table(is.na(data$hepc_bl_ngml))
+  t5 <-                            table(is.na(data$hepc_preop_ngml))
+  t6 <- with(data, table(is.na(hepc_bl_ngml), is.na(hepc_preop_ngml)))
+  
+```
+
+
+# Number of observations with EPO and hepcidin values at baseline and pre-op
+
+In the ITT sample (n = `r nrow(data)`), EPO (mIU/mL) was measured in `r t1["FALSE"]` patients at baseline and `r t2["FALSE"]` patients prior to their operation but after the intervention was administered (`r t3[1]` patients had EPO measured at both time points and `r t3[4]` had it measured at neither).  
+
+Hepcidin (ng/mL) was measured in `r t4["FALSE"]` patients at baseline and `r t5["FALSE"]` patients prior to their operation but after the intervention was administered (`r t6[1]` patients had EPO measured at both time points and `r t6[4]` had it measured at neither).  
+
+<br>
+<br>
+
+# Impact of iron (ITT) on EPO and hepcidin values
+
+<br>
+<br>
+
+**Table: Distribution of EPO and hepcidin by study arm**
+
+```{r}
+
+  data <- data %>%
+    mutate(
+      log10_epo_bl_miuml = log10(epo_bl_miuml), 
+      log10_epo_preop_miuml = log10(epo_preop_miuml), 
+      log10_hepc_bl_ngml = log10(hepc_bl_ngml), 
+      log10_hepc_preop_ngml = log10(hepc_preop_ngml), 
+      delta_epo = epo_preop_miuml - epo_bl_miuml, 
+      delta_hepc = hepc_preop_ngml - hepc_bl_ngml
+      ) 
+
+  dd <- datadist(data); options(datadist = "dd")
+
+  table.1.var <- select(data,
+    arm = group, 
+    epo_bl_miuml, log10_epo_bl_miuml, epo_preop_miuml, log10_epo_preop_miuml, 
+    delta_epo, 
+    hepc_bl_ngml, log10_hepc_bl_ngml, hepc_preop_ngml, log10_hepc_preop_ngml,
+    delta_hepc
+    ) 
+
+  
+  # map(table.1.var, class)
+
+  act <- filter(table.1.var, arm == "Active") %>% select(-arm)
+  con <- filter(table.1.var, arm == "Placebo") %>% select(-arm)
+
+  vars <- c(
+    "Baseline EPO (mIU/mL)",
+    "Baseline EPO (log10(mIU/mL))",
+    "Pre-op EPO (mIU/mL)",
+    "Pre-op EPO (log10(mIU/mL))",
+    "Change in EPO (mmol/L)",
+    "Baseline hepcidin (ng/mL)",
+    "Baseline hepcidin (ng/mL)",
+    "Pre-op hepcidin (ng/mL)",
+    "Pre-op hepcidin (ng/mL)",
+    "Change in hepcidin (ng/mL)"
+  )
+  
+  data_frame(
+    "Variable" =  vars,
+    "Observations" = n.miss(select(table.1.var, -arm)),
+    "Total" = summary.2(select(table.1.var, -arm)),
+    "Control" = summary.2(con),
+    "Active" = summary.2(act)
+    ) %>% 
+  kable()
+
+  rm(act, con)
+  
+```
+*Note: values are medians[IQR] or n(%)*
+
+<br>
+<br>
+
+**Figure: Distributions of baseline and pre-operative EPO values (mIU/mL) by study arm.**
+
+```{r}
+
+  reds <- RColorBrewer::brewer.pal(3, "Reds")
+
+  select(data, identifier, group, epo_bl_miuml, epo_preop_miuml) %>%
+    gather(time, epo, epo_bl_miuml, epo_preop_miuml) %>% 
+    mutate(time = factor(time, labels = c("Baseline", "Pre-op"))) %>%
+  ggplot(aes(x = time, y = epo)) +
+    geom_violin(aes(group = time), width = 0.3, color = "grey90", 
+                fill = "grey90") +
+    geom_point(position = position_jitter(width = 0.05, height = 0,
+                                          seed = 12)) +
+    geom_line(aes(group = identifier),
+              alpha = 0.05, position = position_jitter(width = 0.05, height = 0,
+                                                       seed = 12)) +
+    geom_smooth(aes(x = as.numeric(time), y = epo), method = "lm",
+                se = FALSE) +
+    facet_wrap(~group) +
+    xlab("") +
+    ylab("EPO (mIU/mL)") +
+    scale_color_brewer(guide = FALSE, palette = "Set1") +
+    theme_minimal() +
+    theme(panel.grid.minor = element_blank())
+
+```
+
+<br>
+<br>
+
+```{r}
+
+  m1 <- lm(epo_preop_miuml ~ group + mc(epo_bl_miuml), data = data)
+
+```
+
+Baseline adjusted pre-operative EPO levels were 7.53 mIU/mL lower in the iron arm vs the placebo arm (`r pull_ci_2(m1)`). 
+
+<br>
+<br>
+
+**Table: Effect of iron on EPO levels (mIU/mL) estimated by linear regression with adjustment for baseline EPO**
+
+```{r}
+
+  tab_model(m1)
+
+```
+
+<br>
+<br>
+
+**Figure: Distributions of baseline and pre-operative hepcidin values (ng/mL) by study arm.**
+
+```{r}
+
+  reds <- RColorBrewer::brewer.pal(3, "Reds")
+
+  select(data, identifier, group, hepc_bl_ngml, hepc_preop_ngml) %>%
+    gather(time, hepcidin, hepc_bl_ngml, hepc_preop_ngml) %>% 
+    mutate(time = factor(time, labels = c("Baseline", "Pre-op"))) %>%
+  ggplot(aes(x = time, y = hepcidin)) +
+    geom_violin(
+      aes(group = time), 
+      width = 0.3, color = "grey90", fill = "grey90"
+      ) +
+    geom_point(
+      position = position_jitter(width = 0.05, height = 0, seed = 12)
+      ) +
+    geom_line(
+      aes(group = identifier),
+      alpha = 0.05, 
+      position = position_jitter(width = 0.05, height = 0, seed = 12)
+      ) +
+    geom_smooth(
+      aes(x = as.numeric(time), y = hepcidin), 
+      method = "lm", se = FALSE
+      ) +
+    facet_wrap(~group) +
+    xlab("") +
+    ylab("Hepcidin (ng/mL)") +
+    scale_color_brewer(guide = FALSE, palette = "Set1") +
+    theme_minimal() +
+    theme(panel.grid.minor = element_blank())
+
+```
+
+<br>
+<br>
+
+```{r}
+
+  m1 <- lm(hepc_preop_ngml ~ group + mc(hepc_bl_ngml), data = data)
+
+```
+
+Pre-operative hepcidin levels were `r round(m1$coefficients["groupActive"], 2)` ng/mL higher in the iron arm vs the placebo arm (`r pull_ci_2(m1)`). 
+
+<br>
+<br>
+
+**Table: Effect of iron on hepcidin levels (ng/mL) estimated by linear regression with adjustment for baseline hepcidin**
+
+```{r}
+
+  tab_model(m1)
+
+```
+
+<br>
+<br>
+
+
+# Associations between EPO, hepcidin and hemoglobin. 
+
+Here we will just relate the change in EPO and hepcidin (baseline to pre-op) to corresponding changes in Hb, adjusted for trial arm. 
+
+```{r}
+
+# Add baseline Hb from hb_long
+  data <- left_join(
+    data, 
+    select(hb_long, identifier, haem_bl) %>%
+      distinct(), 
+    by = "identifier"
+  )
+
+ # with(data, plot(haem_bl, tdl_hb_bl)) - # QUERY measurement paper?
+
+```
+
+
+```{r}
+
+  m1 <- ols(tdl_hb_change ~ group + rcs(delta_hepc, 4) + rcs(delta_epo, 4), 
+            data = data)
+
+```
+
+
+```{r}
+
+  t1 <- with(filter(data, !is.na(delta_epo)), table(tdl_hb_change))
+
+  g1 <- ggplot(Predict(m1, delta_epo, group)) +
+    ylab("Change in Hb (baseline to pre-op)") +
+    xlab("Change in EPO (mIU/mL)") +
+    scale_color_brewer("", palette = "Set1") +
+    theme_minimal() +
+    theme(panel.grid.minor = element_blank(), 
+          aspect.ratio = 1, 
+          legend.position = "top") 
+  
+  t2 <- with(filter(data, !is.na(delta_hepc)), table(tdl_hb_change))
+
+  g2 <- ggplot(Predict(m1, delta_hepc, group)) +
+    ylab("") +
+    xlab("Change in hepcidin (ng/mL)") +
+    scale_color_brewer(guide = FALSE, palette = "Set1") +
+    theme_minimal() +
+    theme(panel.grid.minor = element_blank(), 
+          aspect.ratio = 1, 
+          axis.text.y = element_blank()) 
+
+  g1 + g2 + plot_annotation(
+    title = "Changes in EPO and hepcidin are not strongly predictive of changes in Hb",
+    subtitle = "(basline to pre-op)"
+  )
+
+```
+
+These plots show the model-adjusted relationships between changes in EPO and hepcidin with changes in Hb (baseline to pre-op). The EPO and hepcidin effects are adjusted for one another, as well as for study arm. Potential non-linear effects were accommodated with restricted cubic splines. **Essentially what we see is that there is no relationship between changes in EPO or hepcidin with changes in Hb** (i.e. the red and blue lines move horizontally across the plot, and the 95% confidence regions overlap considerably). This is confirmed by the tests of these associations below. 
+
+```{r}
+
+  anova(m1)
+
+```
+
+# Do EPO and/or hepcidin levels predict reponse to iron tx in key study outcomes?
+
+To help understand how two biomarker levels, EPO and hepcidin, might be associated with outcomes, and perhaps even explain how study participants responded to iron supplementation, we fit outcome-appropriate generalized linear models that included an interaction between study arm and the two biomarker levels, where the latter were modeled with restricted cubic splines (4 knots) to capture any non-linearities. Using these models, we can observe the arm specific predicted outcomes as a function of the biomarkers. Finally, we considered three different biomarker measures: baseline, pre-op, and the change between baseline and pre-op; and estimated subgroups effects for patients with hepcidin < 20 ng/ml.  
+
+<br>
+<br>
+
+## Hepcidin
+
+### First co-primary outcome (death or BT in the first 30 days)
+
+In the plots below, the dashed horizontal line reflects the marginal probability of the outcome in that analytic sample. The LRT p-value is a likelihood ratio test of the effect of hepcidin. The red and blue lines reflect the arm-specific, non-linear associations between hepcidin and the outcome, while the shaded areas reflect 95% CIs for those predicted outcomes. The underlying model for the first co-primary outcome was logistic regression. 
+
+```{r}
+
+  m3 <- lrm(primary_30d ~ group * rcs(hepc_bl_ngml, 4), data = data)
+  m4 <- lrm(primary_30d ~ group * rcs(hepc_preop_ngml, 4), data = data)
+  m5 <- lrm(primary_30d ~ group * rcs(delta_hepc, 4), data = data)
+
+```
+
+```{r}
+
+  tests <- bind_rows(
+    phos_effect(m3, "Baseline hepcidin (and higher order factors)"), 
+    phos_effect(m4, "Pre-op hepcidin (and higher order factors)"), 
+    phos_effect(m5, "Change in hepcidin (and higher order factors)")
+  ) 
+
+# See functions.R for phos_effect (just an ANOVA of the nested models)
+
+```
+
+
+```{r}
+
+  t1 <- with(filter(data, !is.na(hepc_bl_ngml)), table(primary_30d))
+
+  g1 <- ggplot(Predict(m3, hepc_bl_ngml, group)) +
+    ylab("Proportion with BT or death in 30 days") +
+    xlab("Baseline hepcidin (ng/mL)") +
+    scale_color_brewer("", palette = "Set1") +
+    coord_cartesian(ylim = c(-3, 2), xlim = c(0.5, 2.5)) +
+    theme_minimal() +
+    theme(panel.grid.minor = element_blank(), 
+          aspect.ratio = 1, 
+          legend.position = "top") +
+    scale_y_continuous(trans = inverse_logit_brks_trans) +
+    geom_hline(yintercept = logit_trans(t1[2]/sum(t1)), linetype = "dashed") +
+    ggtitle("", subtitle = paste0("n = ", sum(t1), "; LRT p = ", tests$P[1]))
+
+  
+  t2 <- with(filter(data, !is.na(hepc_preop_ngml)), table(primary_30d))
+
+  g2 <- ggplot(Predict(m4, hepc_preop_ngml, group)) +
+    ylab("") +
+    xlab("Pre-op hepcidin (ng/mL)") +
+    scale_color_brewer(guide = FALSE, palette = "Set1") +
+    coord_cartesian(ylim = c(-3, 2), xlim = c(0.5, 2.5)) +
+    theme_minimal() +
+    theme(panel.grid.minor = element_blank(), 
+          aspect.ratio = 1, 
+          axis.text.y = element_blank()) +
+    scale_y_continuous(trans = inverse_logit_brks_trans) +
+    geom_hline(yintercept = logit_trans(t2[2]/sum(t2)), linetype = "dashed") +
+    ggtitle("", subtitle = paste0("n = ", sum(t2), "; LRT p = ", tests$P[2]))
+
+  
+  t3 <- with(filter(data, !is.na(delta_hepc)), table(primary_30d))
+
+  g3 <- ggplot(Predict(m5, delta_hepc, group)) +
+    ylab("") +
+    xlab("Change in hepcidin (ng/mL)") +
+    scale_color_brewer(guide = FALSE, palette = "Set1") +
+    coord_cartesian(ylim = c(-3, 2)) +
+    theme_minimal() +
+    theme(panel.grid.minor = element_blank(), 
+          aspect.ratio = 1, 
+          axis.text.y = element_blank()) +
+    scale_y_continuous(trans = inverse_logit_brks_trans) +
+    geom_hline(yintercept = logit_trans(t3[2]/sum(t3)), linetype = "dashed")  +
+    ggtitle("", subtitle = paste0("n = ", sum(t3), "; LRT p = ", tests$P[3]))
+
+  g1 | g2 | g3
+
+```
+
+```{r}
+
+  # Does this scale tansform make sense?
+
+  # g1 <- ggplot(Predict(m3, hepc_bl_ngml, group)) +
+  #   ylab("Proportion with BT or death in 30 days") +
+  #   xlab("Baseline hepcidin (ng/mL)") +
+  #   scale_color_brewer("", palette = "Set1") +
+  #   coord_cartesian(ylim = c(-3, 2), xlim = c(0.5, 2.5)) +
+  #   theme_minimal() +
+  #   theme(panel.grid.minor = element_blank(), 
+  #         aspect.ratio = 1, 
+  #         legend.position = "top") +
+  #   scale_y_continuous(trans = inverse_logit_brks_trans) +
+  #   ggtitle("", subtitle = paste0("n = ", sum(t1), "; LRT p = ", tests$P[1]))
+  # 
+  # g2 <- ggplot(Predict(m3, hepc_bl_ngml, group)) +
+  #   ylab("Proportion with BT or death in 30 days") +
+  #   xlab("Baseline hepcidin (ng/mL)") +
+  #   scale_color_brewer("", palette = "Set1") +
+  #   coord_cartesian(ylim = c(-3, 2), xlim = c(0.5, 2.5)) +
+  #   theme_minimal() +
+  #   theme(panel.grid.minor = element_blank(), 
+  #         aspect.ratio = 1, 
+  #         legend.position = "top") +
+  #   ggtitle("", subtitle = paste0("n = ", sum(t1), "; LRT p = ", tests$P[1]))
+  # 
+  # g1 + g2
+  
+  
+```
+
+#### Categorized hepcidin
+
+```{r}
+
+  m3cat_i <- lrm(primary_30d ~ group * hepc_bl_low, data = data)
+  m4cat_i <- lrm(primary_30d ~ group * hepc_preop_low, data = data)
+  # anova(m3cat_i) # No interaction
+  # anova(m4cat_i) # No interaction
+  
+  m3cat <- lrm(primary_30d ~ group + hepc_bl_low, data = data)
+  m4cat <- lrm(primary_30d ~ group + hepc_preop_low, data = data)
+  
+  # tab_model(m3cat, m4cat)
+  # anova(m3cat) 
+  # anova(m4cat)
+
+```
+
+<br>
+<br>
+
+
+```{r}
+
+  vars <- c("hepc_preop_low", "hepc_bl_low")
+
+  map2_dfr(vars, rep("primary_30d", times = length(vars)), sub_sum_1_or) %>% 
+    kable()
+
+```
+
+Effects are ORs from logistic regression models. LRT P values are for the likelihood ratio test of the overall interaction. 
+
+
+### Second co-primary outcome (number of BTs in the first 30 days)
+
+Modeled with quasi-Poisson regression. 
+
+#### Continuous hepcidin
+
+```{r}
+
+  m6 <- Glm(
+    BT_30d_num ~ group * rcs(mc(hepc_bl_ngml), 4) + offset(obs_time_1_log),
+    family = quasipoisson(), data = data
+    )
+
+  m7 <- Glm(
+    BT_30d_num ~ group * rcs(mc(hepc_preop_ngml), 4) + offset(obs_time_1_log), 
+    family = quasipoisson(), data = data
+    )
+  
+  m8 <- Glm(
+    BT_30d_num ~ group * rcs(mc(delta_hepc), 4) + offset(obs_time_1_log), 
+    family = quasipoisson(), data = data
+    )
+  
+  tests <- bind_rows(
+    phos_effect(m6, "Baseline hepcidin (and higher order factors)"), 
+    phos_effect(m7, "Pre-op hepcidin (and higher order factors)"), 
+    phos_effect(m8, "Change in hepcidin (and higher order factors)")
+  ) 
+
+```
+
+
+```{r}
+
+  off <- setNames(list(NA), c("obs_time_1_log"))
+
+  mn1 <- with(filter(data, !is.na(hepc_bl_ngml)), mean(BT_30d_num)) / 30
+  n1 <- nrow(filter(data, !is.na(hepc_bl_ngml)))
+  g1 <- ggplot(Predict(m6, hepc_bl_ngml, group, offset = off)) +
+    ylab("log(Number of BTs/day)") +
+    xlab("Baseline hepcidin (ng/mL)") +
+    scale_color_brewer(guide = FALSE, palette = "Set1") +
+    coord_cartesian(ylim = c(-7, -3), xlim = c(0.5, 2.5)) +
+    theme_minimal() +
+    theme(panel.grid.minor = element_blank(), 
+          aspect.ratio = 1) +
+    ggtitle("", subtitle = paste0("n = ", n1, "; LRT p = ", tests$P[1])) 
+
+  mn2 <- with(filter(data, !is.na(hepc_preop_ngml)), mean(BT_30d_num)) / 30
+  n2 <- nrow(filter(data, !is.na(hepc_preop_ngml)))
+  g2 <- ggplot(Predict(m7, hepc_preop_ngml, group, offset = off)) +
+    ylab("") +
+    xlab("Pre-op hepcidin (ng/mL)") +
+    scale_color_brewer(guide = FALSE, palette = "Set1") +
+    coord_cartesian(ylim = c(-7, -3), xlim = c(0.5, 2.5)) +
+    theme_minimal() +
+    theme(panel.grid.minor = element_blank(), 
+          aspect.ratio = 1, 
+          axis.text.y = element_blank()) +
+    geom_hline(yintercept = mn2, linetype = "dashed")  +
+    ggtitle("", subtitle = paste0("n = ", n2, "; LRT p = ", tests$P[2]))
+
+  mn3 <- with(filter(data, !is.na(delta_hepc)), mean(BT_30d_num)) / 30
+  n3 <- nrow(filter(data, !is.na(delta_hepc)))
+  g3 <- ggplot(Predict(m8, delta_hepc, group, offset = off)) +
+    ylab("") +
+    xlab("Change in hepcidin (ng/mL)") +
+    scale_color_brewer("", palette = "Set1") +
+    coord_cartesian(ylim = c(-7, -3)) +
+    theme_minimal() +
+    theme(panel.grid.minor = element_blank(), 
+          aspect.ratio = 1, 
+          axis.text.y = element_blank()) +
+    geom_hline(yintercept = mn3, linetype = "dashed")  +
+    ggtitle("", subtitle = paste0("n = ", n3, "; LRT p = ", tests$P[3]))
+  
+  g1 | g2 | g3
+  
+```
+
+#### Categorized hepcidin
+
+```{r}
+
+  m6cat_i <- Glm(BT_30d_num ~ group * hepc_bl_low + offset(obs_time_1_log),
+                 data = data, family = quasipoisson())
+  m7cat_i <- Glm(BT_30d_num ~ group * hepc_preop_low  +
+                   offset(obs_time_1_log), 
+                 data = data, family = quasipoisson())
+  # anova(m3cat_i) # No interaction
+  # anova(m4cat_i) # No interaction
+
+  m6cat <- glm(BT_30d_num ~ group + hepc_bl_low + offset(obs_time_1_log),
+               data = data, family = quasipoisson(link = "log"))
+  m7cat <- glm(BT_30d_num ~ group + hepc_preop_low + offset(obs_time_1_log),
+               data = data, family = quasipoisson(link = "log"))
+  
+ # tab_model(m6cat, m7cat)
+
+```
+
+
+```{r}
+
+  vars <- c("hepc_preop_low", "hepc_bl_low", "phos_preop_65_mmolL",
+            "phos_bl_65_mmolL")
+
+  map2_dfr(vars, rep("BT_30d_num", times = length(vars)), sub_sum_2_qp) %>% 
+    kable()
+
+```
+
+Effects are IRRs from a quasipossion model. LRT P values are for the likelihood ratio test of the overall interaction. 
+
+
+### Length of hospital stay
+
+Modeled with linear regression on log-transformed hospital length of stay. 
+
+#### Continuous hepcidin
+
+```{r}
+
+# hist(log(data$hosp_stay))
+
+```
+
+```{r}
+
+  m9 <- ols(
+    log(hosp_stay) ~ group * rcs(mc(hepc_bl_ngml), 4),
+    data = data
+    )
+
+  m10 <- ols(
+    log(hosp_stay) ~ group * rcs(mc(hepc_preop_ngml), 4), 
+    data = data
+    )
+  
+  m11 <- ols(
+    log(hosp_stay) ~ group * rcs(mc(delta_hepc), 4),
+    data = data
+    )
+  
+  tests <- bind_rows(
+    phos_effect(m9, "Baseline hepcidin (and higher order factors)"), 
+    phos_effect(m10, "Pre-op hepcidin (and higher order factors)"), 
+    phos_effect(m11, "Change in hepcidin (and higher order factors)")
+  ) 
+
+```
+
+```{r}
+
+  off <- setNames(list(NA), c("obs_time_1_log"))
+
+  mn1 <- with(
+    filter(data, !is.na(hepc_bl_ngml)), 
+    mean(log(hosp_stay), na.rm = TRUE)
+    )
+  n1 <- nrow(filter(data, !is.na(hepc_bl_ngml) & !is.na(hosp_stay)))
+
+  g1 <- ggplot(Predict(m9, hepc_bl_ngml, group)) +
+    ylab("log(hospital length of stay (days))") +
+    xlab("Baseline hepcidin (ng/mL)") +
+    scale_color_brewer(guide = FALSE, palette = "Set1") +
+    coord_cartesian(ylim = c(1, 3), xlim = c(0.5, 2.5)) +
+    theme_minimal() +
+    theme(panel.grid.minor = element_blank(), 
+          aspect.ratio = 1) +
+    geom_hline(yintercept = mn1, linetype = "dashed")  +
+    ggtitle("", subtitle = paste0("n = ", n1, "; LRT p = ", tests$P[1])) 
+
+  mn2 <- with(
+    filter(data, !is.na(hepc_preop_ngml)), 
+    mean(log(hosp_stay), na.rm = TRUE)
+    )
+  n2 <- nrow(filter(data, !is.na(hepc_preop_ngml) & !is.na(hosp_stay)))
+  g2 <- ggplot(Predict(m10, hepc_preop_ngml, group)) +
+    ylab("") +
+    xlab("Pre-op hepcidin (ng/mL)") +
+    scale_color_brewer(guide = FALSE, palette = "Set1") +
+    coord_cartesian(ylim = c(1, 3), xlim = c(0.5, 2.5)) +
+    theme_minimal() +
+    theme(panel.grid.minor = element_blank(), 
+          aspect.ratio = 1, 
+          axis.text.y = element_blank()) +
+    geom_hline(yintercept = mn2, linetype = "dashed")  +
+    ggtitle("", subtitle = paste0("n = ", n2, "; LRT p = ", tests$P[2]))
+
+  mn3 <- with(
+    filter(data, !is.na(delta_hepc)), 
+    mean(log(hosp_stay), na.rm = TRUE)
+    )
+  n3 <- nrow(filter(data, !is.na(delta_hepc) & !is.na(hosp_stay)))
+  g3 <- ggplot(Predict(m11, delta_hepc, group)) +
+    ylab("") +
+    xlab("Change in hepcidin (ng/mL)") +
+    scale_color_brewer("", palette = "Set1") +
+    coord_cartesian(ylim = c(1, 3)) +
+    theme_minimal() +
+    theme(panel.grid.minor = element_blank(), 
+          aspect.ratio = 1, 
+          axis.text.y = element_blank()) +
+    geom_hline(yintercept = mn3, linetype = "dashed")  +
+    ggtitle("", subtitle = paste0("n = ", n3, "; LRT p = ", tests$P[3]))
+  
+  g1 | g2 | g3
+  
+```
+
+#### Categorized hepcidin
+
+```{r}
+
+  m9cat_i  <- ols(log(hosp_stay) ~ group * hepc_bl_low, data = data)
+  m10cat_i <- ols(log(hosp_stay) ~ group * hepc_preop_low, data = data)
+  # anova(m3cat_i) # No interaction
+  # anova(m4cat_i) # No interaction
+    # tab_model(m9cat_i, m10cat_i)
+
+
+  m9cat <- lm(log(hosp_stay) ~ group + hepc_bl_low,
+               data = data)
+  m10cat <- lm(log(hosp_stay) ~ group + hepc_preop_low,
+               data = data)
+  
+  # tab_model(m9cat, m10cat)
+
+```
+
+```{r}
+
+  vars <- c("hepc_preop_low", "hepc_bl_low", "phos_preop_65_mmolL",
+            "phos_bl_65_mmolL")
+
+  map2_dfr(vars, rep("hosp_stay", times = length(vars)), sub_sum_log_lin) %>% 
+    kable()
+
+```
+
+Effects are ratios of geometric means from log-linear models. LRT P values are for the likelihood ratio test of the overall interaction. 
+
+
+
+### Length of ITU stay
+
+Modeled with quasi-Poisson regression. 
+
+#### Continuous hepcidin
+
+```{r}
+
+# hist(log(data$itu_stay))
+# hist(data$itu_stay)
+
+# hist(log(data$hosp_stay))
+# hist(data$hosp_stay)
+
+```
+
+```{r}
+
+  m12 <- Glm(
+    itu_stay ~ group * rcs(mc(hepc_bl_ngml), 4),
+    family = quasipoisson(), data = data
+    )
+
+  m13 <- Glm(
+    itu_stay ~ group * rcs(mc(hepc_preop_ngml), 4), 
+    family = quasipoisson(), data = data
+    )
+  
+  m14 <- Glm(
+    itu_stay ~ group * rcs(mc(delta_hepc), 4), 
+    family = quasipoisson(), data = data
+    )
+  
+  tests <- bind_rows(
+    phos_effect(m12, "Baseline hepcidin (and higher order factors)"), 
+    phos_effect(m13, "Pre-op hepcidin (and higher order factors)"), 
+    phos_effect(m14, "Change in hepcidin (and higher order factors)")
+  ) 
+
+```
+
+
+```{r}
+
+
+  mn1 <- with(
+    filter(data, !is.na(hepc_bl_ngml)), 
+    log(mean(itu_stay, na.rm = TRUE))
+    )
+  n1 <- nrow(filter(data, !is.na(hepc_bl_ngml) & !is.na(itu_stay)))
+  g1 <- ggplot(Predict(m12, hepc_bl_ngml, group)) +
+    ylab("log(ITU stay)") +
+    xlab("Baseline hepcidin (ng/mL)") +
+    scale_color_brewer(guide = FALSE, palette = "Set1") +
+    coord_cartesian(ylim = c(-2, 1.5), xlim = c(0.5, 2.5)) +
+    theme_minimal() +
+    theme(panel.grid.minor = element_blank(), 
+          aspect.ratio = 1) +
+    geom_hline(yintercept = mn1, linetype = "dashed")  +
+    ggtitle("", subtitle = paste0("n = ", n1, "; LRT p = ", tests$P[1])) 
+
+  mn2 <- with(
+    filter(data, !is.na(hepc_preop_ngml)), 
+    log(mean(itu_stay, na.rm = TRUE))
+         ) 
+  n2 <- nrow(filter(data, !is.na(hepc_preop_ngml) & !is.na(itu_stay)))
+  g2 <- ggplot(Predict(m13, hepc_preop_ngml, group)) +
+    ylab("") +
+    xlab("Pre-op hepcidin (ng/mL)") +
+    scale_color_brewer(guide = FALSE, palette = "Set1") +
+    coord_cartesian(ylim = c(-2, 1.5), xlim = c(0.5, 2.5)) +
+    theme_minimal() +
+    theme(panel.grid.minor = element_blank(), 
+          aspect.ratio = 1, 
+          axis.text.y = element_blank()) +
+    geom_hline(yintercept = mn2, linetype = "dashed")  +
+    ggtitle("", subtitle = paste0("n = ", n2, "; LRT p = ", tests$P[2]))
+
+  mn3 <- with(
+    filter(data, !is.na(delta_hepc)), 
+    log(mean(itu_stay, na.rm = TRUE))
+    ) 
+  n3 <- nrow(filter(data, !is.na(delta_hepc) & !is.na(itu_stay)))
+  g3 <- ggplot(Predict(m14, delta_hepc, group)) +
+    ylab("") +
+    xlab("Change in hepcidin (ng/mL)") +
+    scale_color_brewer("", palette = "Set1") +
+    coord_cartesian(ylim = c(-2, 1.5)) +
+    theme_minimal() +
+    theme(panel.grid.minor = element_blank(), 
+          aspect.ratio = 1, 
+          axis.text.y = element_blank()) +
+    geom_hline(yintercept = mn3, linetype = "dashed")  +
+    ggtitle("", subtitle = paste0("n = ", n3, "; LRT p = ", tests$P[3]))
+  
+  g1 | g2 | g3
+  
+```
+
+#### Cateogorical hepcidin
+
+```{r}
+
+  m12cat_i <- Glm(itu_stay ~ group * hepc_bl_low,
+                 data = data, family = quasipoisson())
+  m13cat_i <- Glm(itu_stay ~ group * hepc_preop_low, 
+                 data = data, family = quasipoisson())
+  # anova(m12cat_i) # No interaction
+  # anova(m13cat_i) # No interaction
+
+  m12cat <- glm(itu_stay ~ group + hepc_bl_low,
+               data = data, family = quasipoisson(link = "log"))
+  m13cat <- glm(itu_stay ~ group + hepc_preop_low,
+               data = data, family = quasipoisson(link = "log"))
+  
+  # tab_model(m12cat, m13cat)
+
+```
+
+```{r}
+
+  vars <- c("hepc_preop_low", "hepc_bl_low", "phos_preop_65_mmolL",
+            "phos_bl_65_mmolL")
+
+  map2_dfr(vars, rep("itu_stay", times = length(vars)), sub_sum_2_qp) %>% 
+    kable()
+
+```
+
+Effects are IRRs from a quasipossion model. LRT P values are for the likelihood ratio test of the overall interaction. 
+
+
+### Postoperative complications (grade 3+)
+
+Modeled with logistic regression
+
+#### Continuous hepcidin
+
+```{r}
+
+  m15 <- lrm(post_op_comp3 ~ group * rcs(hepc_bl_ngml, 4), data = data)
+  m16 <- lrm(post_op_comp3 ~ group * rcs(hepc_preop_ngml, 4), data = data)
+  m17 <- lrm(post_op_comp3 ~ group * rcs(delta_hepc, 4), data = data)
+
+```
+
+```{r}
+
+  tests <- bind_rows(
+    phos_effect(m15, "Baseline hepcidin (and higher order factors)"), 
+    phos_effect(m16, "Pre-op hepcidin (and higher order factors)"), 
+    phos_effect(m17, "Change in hepcidin (and higher order factors)")
+  ) 
+
+```
+
+
+```{r}
+
+  t1 <- with(
+    filter(data, !is.na(hepc_bl_ngml) & !is.na(post_op_comp3)), 
+    table(post_op_comp3)
+    )
+
+  g1 <- ggplot(Predict(m15, hepc_bl_ngml, group)) +
+    ylab("Proportion with Postoperative complications (grade 3+)") +
+    xlab("Baseline hepcidin (ng/mL)") +
+    scale_color_brewer("", palette = "Set1") +
+    coord_cartesian(ylim = c(-3.6, -0.5), xlim = c(0.5, 2.5)) +
+    theme_minimal() +
+    theme(panel.grid.minor = element_blank(), 
+          aspect.ratio = 1, 
+          legend.position = "top") +
+    scale_y_continuous(trans = inverse_logit_brks_trans) +
+    geom_hline(yintercept = logit_trans(t1[2]/sum(t1)), linetype = "dashed") +
+    ggtitle("", subtitle = paste0("n = ", sum(t1), "; LRT p = ", tests$P[1]))
+
+  
+  t2 <- with(
+    filter(data, !is.na(hepc_preop_ngml) & !is.na(post_op_comp3)),
+    table(post_op_comp3)
+    )
+
+  g2 <- ggplot(Predict(m16, hepc_preop_ngml, group)) +
+    ylab("") +
+    xlab("Pre-op hepcidin (ng/mL)") +
+    scale_color_brewer(guide = FALSE, palette = "Set1") +
+    coord_cartesian(ylim = c(-3.6, -0.5), xlim = c(0.5, 2.5)) +
+    theme_minimal() +
+    theme(panel.grid.minor = element_blank(), 
+          aspect.ratio = 1, 
+          axis.text.y = element_blank()) +
+    scale_y_continuous(trans = inverse_logit_brks_trans) +
+    geom_hline(yintercept = logit_trans(t2[2]/sum(t2)), linetype = "dashed") +
+    ggtitle("", subtitle = paste0("n = ", sum(t2), "; LRT p = ", tests$P[2]))
+
+  
+  t3 <- with(
+    filter(data, !is.na(delta_hepc) & !is.na(post_op_comp3)), 
+    table(post_op_comp3)
+    )
+
+  g3 <- ggplot(Predict(m17, delta_hepc, group)) +
+    ylab("") +
+    xlab("Change in hepcidin (ng/mL)") +
+    scale_color_brewer(guide = FALSE, palette = "Set1") +
+    coord_cartesian(ylim = c(-3.6, -0.5)) +
+    theme_minimal() +
+    theme(panel.grid.minor = element_blank(), 
+          aspect.ratio = 1, 
+          axis.text.y = element_blank()) +
+    scale_y_continuous(trans = inverse_logit_brks_trans) +
+    geom_hline(yintercept = logit_trans(t3[2]/sum(t3)), linetype = "dashed")  +
+    ggtitle("", subtitle = paste0("n = ", sum(t3), "; LRT p = ", tests$P[3]))
+
+  
+  g1 | g2 | g3
+
+
+```
+
+#### Categorical hepcidin
+
+```{r}
+
+  m15cat_i <- lrm(post_op_comp3 ~ group * hepc_bl_low, data = data)
+  m16cat_i <- lrm(post_op_comp3 ~ group * hepc_preop_low, data = data)
+  # anova(m15cat_i) # No interaction
+  # anova(m16cat_i) # No interaction
+
+  m15cat <- lrm(post_op_comp3 ~ group + hepc_bl_low, data = data)
+  m16cat <- lrm(post_op_comp3 ~ group + hepc_preop_low, data = data)
+  
+  # tab_model(m15cat, m16cat)
+  # anova(m15cat) 
+  # anova(m16cat)
+
+```
+
+```{r}
+
+  vars <- c("hepc_preop_low", "hepc_bl_low", "phos_preop_65_mmolL")
+
+  map2_dfr(vars, rep("post_op_comp3", times = length(vars)), sub_sum_1_or) %>% 
+    kable()
+  
+
+```
+
+Effects are ORs from logistic regression models. LRT P values are for the likelihood ratio test of the overall interaction. 
+
+
+# End matter
+
+
+
+```{r sysinfo}
+
+  DescTools::SysInfo()
+
+```
+
+

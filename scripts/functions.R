@@ -610,7 +610,7 @@
 
   }
 
-  sub_sum_2_qp <- function(var, out, ...){
+  sub_sum_2_qp <- function(var, out, data, ...){
 
     if(length(levels(data[[var]])) == 2){
 

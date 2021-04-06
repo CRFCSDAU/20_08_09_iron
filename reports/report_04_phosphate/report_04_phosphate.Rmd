@@ -475,7 +475,7 @@ Modeled with quasi-Poisson regression.
   vars <- c("phos_preop_8_mmolL", "phos_bl_8_mmolL", "phos_preop_65_mmolL",
             "phos_bl_65_mmolL")
 
-  map2_dfr(vars, rep("BT_30d_num", times = length(vars)), sub_sum_2_qp) %>% 
+  map2_dfr(vars, rep("BT_30d_num", times = length(vars)), sub_sum_2_qp, data = data) %>% 
     kable()
 
 ```
@@ -763,7 +763,7 @@ Modeled with quasi-Poisson regression.
   vars <- c("phos_preop_8_mmolL", "phos_bl_8_mmolL", "phos_preop_65_mmolL",
             "phos_bl_65_mmolL")
 
-  map2_dfr(vars, rep("itu_stay", times = length(vars)), sub_sum_2_qp) %>% 
+  map2_dfr(vars, rep("itu_stay", times = length(vars)), sub_sum_2_qp, data = data) %>% 
     kable()
 
 ```
@@ -889,6 +889,119 @@ Modeled with logistic regression
 ```
 
 Effects are ORs from logistic regression models. There aren't enough observations in some arm-specific low phosphate groups to estimate those subgroup specific treatment effects which is why the estimates are so extreme. There were no complications in either arm among those with very low phosphorous values (<0.65 mmolL) at baseline, so those figures are omitted from the table above. LRT P values are for the likelihood ratio test of the overall interaction. 
+
+
+# Within active arm relationships between phosphate and outcomes
+
+AE numbers, ICU stay y/n/ and days, Hospital LOS, Complications, Readmission
+
+```{r}
+
+  pull_ci_rms_phos <- function(model){
+
+    x <- data_frame(
+      estimate = coefficients(model)["phos_preop_8_mmolL=< 0.8 mmol/L"],
+      std.error = summary(model)[1, "S.E."],
+      p.value = anova(model)["phos_preop_8_mmolL", "P"]
+      ) %>%
+      mutate(
+        ul = round(exp(estimate + (1.96 * std.error)), 2),
+        ll = round(exp(estimate - (1.96 * std.error)), 2),
+        est = round(exp(estimate), 3),
+        effect = paste0(est, " (", ll, " to ", ul, ")", "; p = ",
+                        round(p.value, 2))
+      )
+
+    return(x$effect)
+  }
+
+```
+
+
+```{r}
+
+  df <- filter(data, group == "Active") 
+  
+  m_icu1 <- Glm(itu_stay ~ phos_preop_8_mmolL, data = df, family = quasipoisson(link = "log"))
+  
+  m_icu2 <- lrm(any_itu ~ phos_preop_8_mmolL, data = df)
+  
+  m_hosp <- Glm(hosp_stay ~ phos_preop_8_mmolL, data = df, family = quasipoisson(link = "log"))
+
+  m_comp <- lrm(post_op_comp3 ~ phos_preop_8_mmolL, data = df)
+  
+  m_readmit1 <- lrm(readmission_8wk ~ phos_preop_8_mmolL, data = df)
+  
+  m_readmit2 <- lrm(readmission_6mo ~ phos_preop_8_mmolL, data = df)
+
+  
+```
+
+
+```{r}
+
+  table.1.var <- data %>%
+    filter(group == "Active" & !is.na(phos_preop_8_mmolL)) %>%
+    select(
+      phos_preop_8_mmolL, 
+      itu_stay, any_itu,
+      hosp_stay,
+      post_op_comp3,
+      readmission_8wk,
+      readmission_6mo
+      ) 
+
+  vars <- c(
+    "LOS ITU (days)",
+    "Any ITU stay", 
+    levels(table.1.var$any_itu),
+    "LOS hospital (days)", 
+    "Grade 3+ complications", 
+    levels(table.1.var$post_op_comp3),
+    "Any readmission by 8 weeks", 
+    levels(table.1.var$readmission_8wk),
+    "Any readmission by 6 months", 
+    levels(table.1.var$readmission_6mo)
+    )
+  
+  effects_ <- c(
+    pull_ci_rms_phos(m_icu1), 
+    pull_ci_rms_phos(m_icu2), "", "",
+    pull_ci_rms_phos(m_hosp),
+    pull_ci_rms_phos(m_comp), "", "",
+    pull_ci_rms_phos(m_readmit1), "", "",
+    pull_ci_rms_phos(m_readmit2), "", ""
+  )
+  
+  # map(table.1.var, class)
+
+  low  <- filter(table.1.var, phos_preop_8_mmolL == "< 0.8 mmol/L") %>% 
+    select(-phos_preop_8_mmolL)
+  high <- filter(table.1.var, phos_preop_8_mmolL == "0.8+ mmol/L") %>% 
+    select(-phos_preop_8_mmolL)
+
+
+  data_frame(
+    "Variable" =  vars,
+    "Observations" = n.miss(select(table.1.var, -phos_preop_8_mmolL)),
+    "Total" = summary.2(select(table.1.var, -phos_preop_8_mmolL)),
+    "< 0.8 mmol/L" = summary.2(low),
+    "0.8+ mmol/L" = summary.2(high), 
+    Effects = effects_
+    ) %>% 
+    kable()
+
+  rm(low, high)
+  
+```
+
+
+
+
+
+
+
+
 
 
 # End matter

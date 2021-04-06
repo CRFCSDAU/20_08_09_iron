@@ -1,0 +1,568 @@
+---
+title: 'EPO/Hepcidin analysis'
+author: ''
+date: ''
+output: 
+  html_document:
+    df_print: paged
+    keep_md: true
+  word_document:
+    reference_docx: style.1.docx
+---
+
+```{r setup, include = FALSE}
+
+  knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, 
+                        fig.width  = 6 * 1.67, fig.height = 6)
+
+  proj <- rprojroot::find_rstudio_root_file()
+  knitr::opts_knit$set(root.dir = proj)
+  
+  load(paste0(proj, "/data/data.RData"))
+  
+  source(paste0(proj, "/scripts/functions.R"))
+
+  # load("data/data.RData")
+  # 
+  # source("scripts/functions.R")
+  
+  library(logbin)
+  library(MASS)
+  library(descr)
+  library(tidyverse)
+  library(viridis)
+  library(knitr)
+  library(rms)
+  library(Hmisc)
+  library(sjPlot)
+  library(ggfortify)
+  library(patchwork)
+  
+  select <- dplyr::select # Deals with conflict between dplyr and MASS with select
+  
+```
+
+```{r}
+  
+  data <- select(data, - time_ecg, - ltfu_pre8) %>% # ITT samples
+    filter(!is.na(primary_30d))
+
+```
+
+```{r}
+  
+  t1 <-       table(is.na(data$epo_bl_miuml))
+  t2 <-                            table(is.na(data$epo_preop_miuml))
+  t3 <- with(data, table(is.na(epo_bl_miuml), is.na(epo_preop_miuml)))
+  
+  t4 <-       table(is.na(data$hepc_bl_ngml))
+  t5 <-                            table(is.na(data$hepc_preop_ngml))
+  t6 <- with(data, table(is.na(hepc_bl_ngml), is.na(hepc_preop_ngml)))
+  
+```
+
+
+# Number of observations with EPO and hepcidin values at baseline and pre-op
+
+In the ITT sample (n = `r nrow(data)`), EPO (mIU/mL) was measured in `r t1["FALSE"]` patients at baseline and `r t2["FALSE"]` patients prior to their operation but after the intervention was administered (`r t3[1]` patients had EPO measured at both time points and `r t3[4]` had it measured at neither).  
+
+Hepcidin (ng/mL) was measured in `r t4["FALSE"]` patients at baseline and `r t5["FALSE"]` patients prior to their operation but after the intervention was administered (`r t6[1]` patients had EPO measured at both time points and `r t6[4]` had it measured at neither).  
+
+<br>
+<br>
+
+# Impact of iron (ITT) on EPO and hepcidin values
+
+<br>
+<br>
+
+**Table: Distribution of EPO and hepcidin by study arm**
+
+```{r}
+
+  data <- data %>%
+    mutate(
+      log10_epo_bl_miuml = log10(epo_bl_miuml), 
+      log10_epo_preop_miuml = log10(epo_preop_miuml), 
+      log10_hepc_bl_ngml = log10(hepc_bl_ngml), 
+      log10_hepc_preop_ngml = log10(hepc_preop_ngml), 
+      delta_epo = epo_preop_miuml - epo_bl_miuml, 
+      delta_hepc = hepc_preop_ngml - hepc_bl_ngml
+      ) 
+
+  dd <- datadist(data); options(datadist = "dd")
+
+  table.1.var <- select(data,
+    arm = group, 
+    epo_bl_miuml, log10_epo_bl_miuml, epo_preop_miuml, log10_epo_preop_miuml, 
+    delta_epo, 
+    hepc_bl_ngml, log10_hepc_bl_ngml, hepc_preop_ngml, log10_hepc_preop_ngml,
+    delta_hepc
+    ) 
+
+  
+  # map(table.1.var, class)
+
+  act <- filter(table.1.var, arm == "Active") %>% select(-arm)
+  con <- filter(table.1.var, arm == "Placebo") %>% select(-arm)
+
+  vars <- c(
+    "Baseline EPO (mIU/mL)",
+    "Baseline EPO (log10(mIU/mL))",
+    "Pre-op EPO (mIU/mL)",
+    "Pre-op EPO (log10(mIU/mL))",
+    "Change in EPO (mmol/L)",
+    "Baseline hepcidin (ng/mL)",
+    "Baseline hepcidin (ng/mL)",
+    "Pre-op hepcidin (ng/mL)",
+    "Pre-op hepcidin (ng/mL)",
+    "Change in hepcidin (ng/mL)"
+  )
+  
+  data_frame(
+    "Variable" =  vars,
+    "Observations" = n.miss(select(table.1.var, -arm)),
+    "Total" = summary.2(select(table.1.var, -arm)),
+    "Control" = summary.2(con),
+    "Active" = summary.2(act)
+    ) %>% 
+  kable()
+
+  rm(act, con)
+  
+```
+*Note: values are medians[IQR] or n(%)*
+
+<br>
+<br>
+
+**Figure: Distributions of baseline and pre-operative EPO values (mIU/mL) by study arm.**
+
+```{r}
+
+
+  select(data, identifier, group, epo_bl_miuml, epo_preop_miuml) %>%
+    gather(time, epo, epo_bl_miuml, epo_preop_miuml) %>% 
+    mutate(time = factor(time, labels = c("Baseline", "Pre-op"))) %>%
+  ggplot(aes(x = time, y = epo)) +
+    geom_violin(aes(group = time), width = 0.3, color = "grey90", 
+                fill = "grey90") +
+    geom_point(position = position_jitter(width = 0.05, height = 0,
+                                          seed = 12)) +
+    geom_line(aes(group = identifier),
+              alpha = 0.05, position = position_jitter(width = 0.05, height = 0,
+                                                       seed = 12)) +
+    geom_smooth(aes(x = as.numeric(time), y = epo), method = "lm",
+                se = FALSE) +
+    facet_wrap(~group) +
+    xlab("") +
+    ylab("EPO (mIU/mL)") +
+    scale_color_brewer(guide = FALSE, palette = "Set1") +
+    theme_minimal() +
+    theme(panel.grid.minor = element_blank())
+
+```
+
+<br>
+<br>
+
+```{r}
+
+  m1 <- lm(epo_preop_miuml ~ group + mc(epo_bl_miuml), data = data)
+
+```
+
+Baseline adjusted pre-operative EPO levels were 7.53 mIU/mL lower in the iron arm vs the placebo arm (`r pull_ci_2(m1)`). 
+
+<br>
+<br>
+
+**Table: Effect of iron on EPO levels (mIU/mL) estimated by linear regression with adjustment for baseline EPO**
+
+```{r}
+
+  tab_model(m1)
+
+```
+
+<br>
+<br>
+
+**Figure: Distributions of baseline and pre-operative hepcidin values (ng/mL) by study arm.**
+
+```{r}
+
+  select(data, identifier, group, hepc_bl_ngml, hepc_preop_ngml) %>%
+    gather(time, hepcidin, hepc_bl_ngml, hepc_preop_ngml) %>% 
+    mutate(time = factor(time, labels = c("Baseline", "Pre-op"))) %>%
+  ggplot(aes(x = time, y = hepcidin)) +
+    geom_violin(
+      aes(group = time), 
+      width = 0.3, color = "grey90", fill = "grey90"
+      ) +
+    geom_point(
+      position = position_jitter(width = 0.05, height = 0, seed = 12)
+      ) +
+    geom_line(
+      aes(group = identifier),
+      alpha = 0.05, 
+      position = position_jitter(width = 0.05, height = 0, seed = 12)
+      ) +
+    geom_smooth(
+      aes(x = as.numeric(time), y = hepcidin), 
+      method = "lm", se = FALSE
+      ) +
+    facet_wrap(~group) +
+    xlab("") +
+    ylab("Hepcidin (ng/mL)") +
+    scale_color_brewer(guide = FALSE, palette = "Set1") +
+    theme_minimal() +
+    theme(panel.grid.minor = element_blank())
+
+```
+
+<br>
+<br>
+
+```{r}
+
+  m1 <- lm(hepc_preop_ngml ~ group + mc(hepc_bl_ngml), data = data)
+
+```
+
+Pre-operative hepcidin levels were `r round(m1$coefficients["groupActive"], 2)` ng/mL higher in the iron arm vs the placebo arm (`r pull_ci_2(m1)`). 
+
+<br>
+<br>
+
+**Table: Effect of iron on hepcidin levels (ng/mL) estimated by linear regression with adjustment for baseline hepcidin**
+
+```{r}
+
+  tab_model(m1)
+
+```
+
+<br>
+<br>
+
+
+# Low hepcidin and pre-op Hb
+
+*In people who have Hepcidin < 20 compared to > 20 was there any difference in change in Hb preop?*
+
+<br>
+<br>
+
+```{r}
+
+  select(data, identifier, group, hepc_bl_low, tdl_hb_bl, tdl_hb_preop) %>%
+    gather(time, hb, tdl_hb_bl, tdl_hb_preop) %>% 
+    mutate(time = factor(time, labels = c("Baseline", "Pre-op"))) %>%
+  ggplot(aes(x = time, y = hb)) +
+    geom_violin(
+      aes(group = time), 
+      width = 0.3, color = "grey90", fill = "grey90"
+      ) +
+    geom_point(
+      position = position_jitter(width = 0.05, height = 0, seed = 12)
+      ) +
+    geom_line(
+      aes(group = identifier),
+      alpha = 0.05, 
+      position = position_jitter(width = 0.05, height = 0, seed = 12)
+      ) +
+    geom_smooth(
+      aes(x = as.numeric(time), y = hb), 
+      method = "lm", se = FALSE
+      ) +
+    facet_wrap(~group + hepc_bl_low) +
+    xlab("") +
+    ylab("Hb") +
+    scale_color_brewer(guide = FALSE, palette = "Set1") +
+    theme_minimal() +
+    theme(panel.grid.minor = element_blank())
+
+
+```
+<br>
+<br>
+
+No obvious patterns in the plot above, looking at baseline and pre-op Hb in low vs not-low hepcidin and by study arm (top row placebo arm, bottom row active arm). 
+
+<br>
+<br>
+
+```{r}
+
+  m3 <- lm(tdl_hb_preop ~ group + hepc_bl_low + mc(tdl_hb_bl), data = data)
+  tab_model(m3)
+
+```
+
+<br>
+<br>
+
+Low hepcidin (vs not low) was not associated with baseline adjusted pre-op Hb levels (p for effect = 0.5). 
+
+<br>
+<br>
+
+```{r}
+
+  m4 <- lm(tdl_hb_preop ~ group * hepc_bl_low + mc(tdl_hb_bl), data = data)
+  tab_model(m4)
+
+```
+
+
+<br>
+<br>
+
+There was no interaction between low hepcidin and treatment arm with respect to baseline adjusted pre-op Hb values (p interaction = 0.52). 
+
+<br>
+<br>
+
+# Associations between EPO, hepcidin and hemoglobin. 
+
+Here we will just relate the change in EPO and hepcidin (baseline to pre-op) to corresponding changes in Hb, adjusted for trial arm. 
+
+```{r}
+
+# Add baseline Hb from hb_long
+  data <- left_join(
+    data, 
+    select(hb_long, identifier, haem_bl) %>%
+      distinct(), 
+    by = "identifier"
+  )
+
+ # with(data, plot(haem_bl, tdl_hb_bl)) - # QUERY measurement paper?
+
+```
+
+
+```{r}
+
+  m1 <- ols(tdl_hb_change ~ group + rcs(delta_hepc, 4) + rcs(delta_epo, 4), 
+            data = data)
+
+```
+
+
+```{r}
+
+  t1 <- with(filter(data, !is.na(delta_epo)), table(tdl_hb_change))
+
+  g1 <- ggplot(Predict(m1, delta_epo, group)) +
+    ylab("Change in Hb (baseline to pre-op)") +
+    xlab("Change in EPO (mIU/mL)") +
+    scale_color_brewer("", palette = "Set1") +
+    theme_minimal() +
+    theme(panel.grid.minor = element_blank(), 
+          aspect.ratio = 1, 
+          legend.position = "top") 
+  
+  t2 <- with(filter(data, !is.na(delta_hepc)), table(tdl_hb_change))
+
+  g2 <- ggplot(Predict(m1, delta_hepc, group)) +
+    ylab("") +
+    xlab("Change in hepcidin (ng/mL)") +
+    scale_color_brewer(guide = FALSE, palette = "Set1") +
+    theme_minimal() +
+    theme(panel.grid.minor = element_blank(), 
+          aspect.ratio = 1, 
+          axis.text.y = element_blank()) 
+
+  g1 + g2 + plot_annotation(
+    title = "Changes in EPO and hepcidin are not strongly predictive of changes in Hb",
+    subtitle = "(basline to pre-op)"
+  )
+
+```
+
+These plots show the model-adjusted relationships between changes in EPO and hepcidin with changes in Hb (baseline to pre-op). The EPO and hepcidin effects are adjusted for one another, as well as for study arm. Potential non-linear effects were accommodated with restricted cubic splines. **Essentially what we see is that there is little or no relationship between changes in EPO or hepcidin with changes in Hb**. This is confirmed by the tests of these associations below. 
+
+```{r}
+
+  anova(m1)
+
+```
+
+
+
+# Low hepcidin subgroup effects
+
+## Primary outcome
+
+```{r}
+
+  m3cat_i <- lrm(primary_30d ~ group * hepc_bl_low, data = data)
+  m4cat_i <- lrm(primary_30d ~ group * hepc_preop_low, data = data)
+  # anova(m3cat_i) # No interaction
+  # anova(m4cat_i) # No interaction
+  
+  m3cat <- lrm(primary_30d ~ group + hepc_bl_low, data = data)
+  m4cat <- lrm(primary_30d ~ group + hepc_preop_low, data = data)
+  
+  # tab_model(m3cat, m4cat)
+  # anova(m4cat_i) 
+  # anova(m4cat)
+
+```
+
+<br>
+<br>
+
+
+```{r}
+
+  vars <- c("hepc_preop_low", "hepc_bl_low")
+
+  map2_dfr(vars, rep("primary_30d", times = length(vars)), sub_sum_1_or) %>% 
+    kable()
+
+```
+
+Effects are ORs from logistic regression models. LRT P values are for the likelihood ratio test of the overall interaction. 
+
+
+## Second co-primary outcome (number of BTs in the first 30 days)
+
+```{r}
+
+  m6cat_i <- Glm(BT_30d_num ~ group * hepc_bl_low + offset(obs_time_1_log),
+                 data = data, family = quasipoisson())
+  m7cat_i <- Glm(BT_30d_num ~ group * hepc_preop_low  +
+                   offset(obs_time_1_log), 
+                 data = data, family = quasipoisson())
+  # anova(m3cat_i) # No interaction
+  # anova(m4cat_i) # No interaction
+
+  m6cat <- glm(BT_30d_num ~ group + hepc_bl_low + offset(obs_time_1_log),
+               data = data, family = quasipoisson(link = "log"))
+  m7cat <- glm(BT_30d_num ~ group + hepc_preop_low + offset(obs_time_1_log),
+               data = data, family = quasipoisson(link = "log"))
+  
+ # tab_model(m6cat, m7cat)
+
+```
+
+```{r}
+
+  vars <- c("hepc_preop_low", "hepc_bl_low")
+
+  map2_dfr(vars, rep("BT_30d_num", times = length(vars)), sub_sum_2_qp) %>% 
+    kable()
+
+```
+
+Effects are IRRs from a quasipossion model. LRT P values are for the likelihood ratio test of the overall interaction. 
+
+
+## Length of hospital stay
+
+```{r}
+
+  m9cat_i  <- ols(log(hosp_stay) ~ group * hepc_bl_low, data = data)
+  m10cat_i <- ols(log(hosp_stay) ~ group * hepc_preop_low, data = data)
+  # anova(m3cat_i) # No interaction
+  # anova(m4cat_i) # No interaction
+    # tab_model(m9cat_i, m10cat_i)
+
+
+  m9cat <- lm(log(hosp_stay) ~ group + hepc_bl_low,
+               data = data)
+  m10cat <- lm(log(hosp_stay) ~ group + hepc_preop_low,
+               data = data)
+  
+  # tab_model(m9cat, m10cat)
+
+```
+
+```{r}
+
+  vars <- c("hepc_preop_low", "hepc_bl_low")
+
+  map2_dfr(vars, rep("hosp_stay", times = length(vars)), sub_sum_log_lin) %>% 
+    kable()
+
+```
+
+Effects are ratios of geometric means from log-linear models. LRT P values are for the likelihood ratio test of the overall interaction. 
+
+
+## Length of ITU stay
+
+Modeled with quasi-Poisson regression. 
+
+```{r}
+
+  m12cat_i <- Glm(itu_stay ~ group * hepc_bl_low,
+                 data = data, family = quasipoisson())
+  m13cat_i <- Glm(itu_stay ~ group * hepc_preop_low, 
+                 data = data, family = quasipoisson())
+  # anova(m12cat_i) # No interaction
+  # anova(m13cat_i) # No interaction
+
+  m12cat <- glm(itu_stay ~ group + hepc_bl_low,
+               data = data, family = quasipoisson(link = "log"))
+  m13cat <- glm(itu_stay ~ group + hepc_preop_low,
+               data = data, family = quasipoisson(link = "log"))
+  
+  # tab_model(m12cat, m13cat)
+
+```
+
+```{r}
+
+  vars <- c("hepc_preop_low", "hepc_bl_low")
+
+  map2_dfr(vars, rep("itu_stay", times = length(vars)), sub_sum_2_qp) %>% 
+    kable()
+
+```
+
+Effects are IRRs from a quasipossion model. LRT P values are for the likelihood ratio test of the overall interaction. 
+
+
+### Postoperative complications (grade 3+)
+
+```{r}
+
+  m15cat_i <- lrm(post_op_comp3 ~ group * hepc_bl_low, data = data)
+  m16cat_i <- lrm(post_op_comp3 ~ group * hepc_preop_low, data = data)
+  # anova(m15cat_i) # No interaction
+  # anova(m16cat_i) # No interaction
+
+  m15cat <- lrm(post_op_comp3 ~ group + hepc_bl_low, data = data)
+  m16cat <- lrm(post_op_comp3 ~ group + hepc_preop_low, data = data)
+  
+  # tab_model(m15cat, m16cat)
+  # anova(m15cat) 
+  # anova(m16cat)
+
+```
+
+```{r}
+
+  vars <- c("hepc_preop_low", "hepc_bl_low")
+
+  map2_dfr(vars, rep("post_op_comp3", times = length(vars)), sub_sum_1_or) %>% 
+    kable()
+  
+```
+
+Effects are ORs from logistic regression models. LRT P values are for the likelihood ratio test of the overall interaction. 
+
+
+# End matter
+
+```{r sysinfo}
+
+  DescTools::SysInfo()
+
+```
+
+
