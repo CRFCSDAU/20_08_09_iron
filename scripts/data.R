@@ -413,6 +413,15 @@
 
   data$any_itu <- factor(ifelse(data$itu_stay > 0, "Yes", "No"))
 
+# Any AEs ----------------------------------------------------------------------
+
+  tar <- unique(aes$identifier)
+
+  data$any_ae <- factor(ifelse(data$identifier %in% tar, "Yes", "No"))
+
+  tar <- unique(aes$identifier[aes$SAE_CTU == 1])
+
+  data$any_sae <- factor(ifelse(data$identifier %in% tar, "Yes", "No"))
 
 # Large BT flags ---------------------------------------------------------------
 
