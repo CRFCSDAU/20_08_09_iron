@@ -1,5 +1,5 @@
 ---
-title: 'Phosphate analysis'
+title: 'Readmissions'
 author: ''
 date: ''
 output: 
@@ -40,14 +40,23 @@ output:
   
   select <- dplyr::select # Deals with conflict between dplyr and MASS with select
   
+  #* = uses a function in root/scripts/functions.R
+  
 ```
 
-# Complications, readmissions and infection
+# Main trial results for readmissions and complications
 
-Better characterization of complications, readmission and infection
-In a nutshell, there is a lot more information on these outcomes in the trial dataset that merits more detailed description. 
+## Readmission for complications (from the main paper)
 
-## Readmission for complications (main paper)
+```{r}
+
+# ITT sample
+
+  data_itt <- data %>% filter(!is.na(primary_30d))
+
+
+```
+
 
 ```{r}
 
@@ -62,6 +71,14 @@ In a nutshell, there is a lot more information on these outcomes in the trial da
   select(var, everything()) %>%
   kable(row.names = FALSE)
 
+#*
+
+```
+
+This table matches the original manuscript (but only if I *don't* restrict to the ITT sample). 
+
+```{r}
+
   m1 <- glm(comp8wk ~ group, data = data, 
             family = binomial(link = "log"), 
             start = c(-1, 0))
@@ -73,22 +90,29 @@ In a nutshell, there is a lot more information on these outcomes in the trial da
               start = c(-1, 0))
   
   m4 <- glm.nb(ncomp6m ~ group + offset(log(os6m)), data = data) 
-
+  
 ```
 
-The model results at 8 weeks were RR `r pull_ci(m1)` for any complications, and IRR `r pull_ci(m2)` for the number of complications. The model results at 6 months were `r pull_ci(m3)` for any complications, and `r pull_ci(m4)` for the number of complications. **NOTE**: This all matches, expect the final model result, which is just slightly off. 
+The model results at 8 weeks were RR `r pull_ci(m1)` for any complications, and IRR `r pull_ci(m2)` for the number of complications. The model results at 6 months were `r pull_ci(m3)` for any complications, and `r pull_ci(m4)` for the number of complications. **NOTE**: This all matches, expect the final model result, which is just slightly off (regardless of whether I use the ITT sample or not). 
+
 
 ## Any readmissions (not previously reported)
 
 ```{r}
 
   bind_rows(
-    counts_pct("readmission_8wk", data), 
-    counts_pct("readmission_6mo", data), 
+    counts_pct("readmission_8wk", data),                                                
+    counts_pct("readmission_6mo", data),                                                
     ) %>% 
   bind_cols(data_frame(var = c("8w n(%)", "6m n(%)"))) %>%
   select(var, everything()) %>%
   kable(row.names = FALSE)
+
+#*
+
+```
+
+```{r}
 
   m5 <- glm(readmission_8wk ~ group, data = data, 
             family = binomial(link = "log"), 
@@ -102,6 +126,26 @@ The model results at 8 weeks were RR `r pull_ci(m1)` for any complications, and 
 ```
 
 The model results were RR `r pull_ci(m5)` for any complications at 8weeks, and RR `r pull_ci(m6)` at 6 months.
+
+How do readmission for complications compare to all readmissions?
+
+8 weeks:
+
+```{r}
+
+  with(data, table(readmission_8wk, comp8wk))
+
+```
+
+6 months:
+
+```{r}
+
+  with(data, table(readmission_6mo, comp6m))
+
+```
+
+For both 8 weeks and 6 months, you get cases that are flagged as readmitted for complications but not for any readmission (`readmission` = No and `comp` = 1). 
 
 
 ## Postoperative grade 3+ complications (main paper)
@@ -119,7 +163,7 @@ The model results were RR `r pull_ci(m5)` for any complications at 8weeks, and R
 
 ```
 
-The model result was `r pull_ci(m7)`. 
+The model result was `r pull_ci(m7)`. This all matches the main paper. 
 
 
 ## Postoperative worst grade complications (not previously reported)
@@ -139,12 +183,91 @@ The model result was `r pull_ci(m7)`.
 
 The model result was `r pull_ci(m8)`. 
 
+# Exploring readmissions
+
+```{r}
+
+# names(readm)
+# map(readm, function(x)table(is.na(x)))
+# length(unique(readm$identifier))
+
+```
+
+There are `r length(unique(readm$identifier))` unique patient identifiers in the readmission data set, which includes information on `r nrow(readm)` total readmissions. Among these, there were `r length(unique(readm$reason_for_admission))` reasons listed for readmission, indicating a need for thoughtful data cleaning. These were further categorized into `r length(unique(readm$classification))` groups in the readmission data.  
+
+```{r}
+
+  ggplot(readm, aes(x = group, fill = classification)) +
+    geom_bar() +
+    theme_minimal() +
+    guides(fill = guide_legend(ncol = 1)) +
+    theme(
+      legend.key.size   = unit(0.1, 'cm'), 
+      legend.key.height = unit(0.1, 'cm'), 
+      legend.key.width  = unit(0.1, 'cm'), 
+      legend.text = element_text(size = 12)
+      ) +
+    xlab("") +
+    ylab("Readmissions")
+
+
+```
+
+```{r}
+
+```
+
+
+
+The main dataset included `r table(data$readmission_8wk)["Yes"]` patients with a readmission by 8 weeks postop and `r table(data$readmission_6mo)`. If we count the number of unique patient identifiers in the readmissions dataset, filtering out those readmissions falling after the relevant time point, those figures were `r length(unique(readm$identifier[readm$days_pre_post_op <= 56]))` and `r length(unique(readm$identifier[readm$days_pre_post_op <= 180]))`, respectively (noting that this is before removing any of them based on their classification). 
+
+Readmission time lines
+
+```{r}
+
+  readm %>%
+    mutate(identifier = reorder(factor(identifier), surgery_date)) %>%
+    select(identifier, surgery_date, admission_date, group) %>%
+    gather(type, date, -identifier, -group) %>%
+  ggplot(aes(y = identifier, x = date, group = identifier, color = type)) +
+    geom_line(size = 0.1, color = "grey") +
+    geom_point() +
+    scale_color_brewer("", palette = "Set1") +
+    theme(
+      axis.text.y = element_blank(), 
+      axis.ticks.y = element_blank(), 
+      panel.grid = element_blank()
+      ) +
+    facet_wrap(~group, ncol = 1) +
+    xlab("") +
+    ylab("Patient")
+  
+          
+```
+
+
 
 
 
 ## Confirming days alive and out of hospital
 
 The median length of stay in each arm was ~ 9 days. Readmissions were substantially different, especially when looking at the actual number of days readmitted. There is a small concern that the existing calculation of the days alive and out of hospital doesn’t seem to match up with the large observed difference in total days readmitted, so this needs to be closely checked. 
+
+```{r}
+
+  ggplot(data, aes(x = ncomp8wk, y = daoh)) +
+    geom_jitter(width = 0.2, height = 0.2)
+
+```
+
+```{r}
+
+  ggplot(data, aes(x = ncomp6m, y = daoh)) +
+    geom_jitter(width = 0.2, height = 0.2)
+
+```
+
+
 
 ## Optimal length of follow-up for days alive and out of hospital
 

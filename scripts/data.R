@@ -413,6 +413,7 @@
 
   data$any_itu <- factor(ifelse(data$itu_stay > 0, "Yes", "No"))
 
+
 # Any AEs ----------------------------------------------------------------------
 
   tar <- unique(aes$identifier)
@@ -422,6 +423,7 @@
   tar <- unique(aes$identifier[aes$SAE_CTU == 1])
 
   data$any_sae <- factor(ifelse(data$identifier %in% tar, "Yes", "No"))
+
 
 # Large BT flags ---------------------------------------------------------------
 
@@ -492,11 +494,22 @@
       )
     )
 
+
+# Readmissions -----------------------------------------------------------------
+
+  readm <- read_excel("data/Summary of AE and readmissions.xlsx", sheet = 6) %>%
+    clean_names() %>%
+    rename(identifier = patient_identifier) %>%
+    left_join(select(data, group, identifier), by = "identifier")
+
+  readm$classification <- tolower(readm$classification)
+  readm$reason_for_admission <- tolower(readm$reason_for_admission)
+
+
 # Other datasets ---------------------------------------------------------------
 
   poms <- read_dta("data/PREVENTT POMS 20191203.dta")
   aes <- read_dta("data/adverse_events.dta") # QUERY can't open this
-
 
 # Things I still need ----------------------------------------------------------
 
@@ -505,9 +518,9 @@
 
 # Save data --------------------------------------------------------------------
 
-  save(data, label_list, hb_long, poms, aes, ops, file = "data/data.RData")
+  save(data, label_list, hb_long, poms, aes, ops, readm, file = "data/data.RData")
 # rm(list = ls())
-# load("data.RData")
+# load("data/data.RData")
 
 
 
